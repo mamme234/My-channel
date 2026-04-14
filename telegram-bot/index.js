@@ -3,93 +3,85 @@ const mongoose = require("mongoose");
 const cron = require("node-cron");
 require("dotenv").config();
 
-// BOT
+const User = require("./models/User");
+
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
-// DATABASE CONNECT
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB Connected"))
+  .then(() => console.log("MongoDB Connected"))
   .catch(err => console.log(err));
-
-// USER MODEL (same structure as your app)
-const User = mongoose.model("User", new mongoose.Schema({
-  username: String,
-  coins: { type: Number, default: 0 },
-  referrals: { type: Number, default: 0 },
-  createdAt: { type: Date, default: Date.now }
-}));
 
 const channel = process.env.CHANNEL;
 
-console.log("🤖 Bot is running...");
+console.log("Bot running...");
 
----
+bot.onText(/\/start/, async (msg) => {
+  const userId = msg.from.id;
+  const username = msg.from.username || "User";
 
-/**
- * 🔥 DAILY REPORT POST (9 AM)
- */
-cron.schedule("0 9 * * *", async () => {
-  try {
-    const totalUsers = await User.countDocuments();
+  let user = await User.findOne({ userId });
 
-    const topUsers = await User.find()
-      .sort({ coins: -1 })
-      .limit(5);
-
-    const totalCoinsAgg = await User.aggregate([
-      { $group: { _id: null, sum: { $sum: "$coins" } } }
-    ]);
-
-    const totalCoins = totalCoinsAgg[0]?.sum || 0;
-
-    let msg = `🔥 DAILY CRYPTO APP REPORT 🔥\n\n`;
-    msg += `👥 Users: ${totalUsers}\n`;
-    msg += `💰 Total Coins: ${totalCoins}\n\n`;
-    msg += `🏆 TOP USERS:\n`;
-
-    topUsers.forEach((u, i) => {
-      msg += `${i + 1}. ${u.username || "User"} - ${u.coins} coins\n`;
-    });
-
-    bot.sendMessage(channel, msg);
-
-  } catch (err) {
-    console.log("Daily report error:", err);
+  if (!user) {
+    user = new User({ userId, username });
+    await user.save();
   }
-});
-
----
-
-/**
- * 🚀 NEW USER WELCOME POST
- */
-cron.schedule("*/30 * * * *", async () => {
-  try {
-    const latestUsers = await User.find()
-      .sort({ createdAt: -1 })
-      .limit(1);
-
-    if (latestUsers.length > 0) {
-      const u = latestUsers[0];
-
-      const msg = `🎉 NEW PLAYER JOINED!\n\n👤 ${u.username || "User"}\n💰 Coins: ${u.coins}\n🔥 Start tapping now!`;
-
-      bot.sendMessage(channel, msg);
-    }
-  } catch (err) {
-    console.log(err);
-  }
-});
-
----
-
-/**
- * 🔥 MANUAL COMMAND (optional test)
- */
-bot.onText(/\/stats/, async (msg) => {
-  const totalUsers = await User.countDocuments();
 
   bot.sendMessage(msg.chat.id,
-    `📊 APP STATS:\n👥 Users: ${totalUsers}`
+    `👋 Welcome ${username}!\n💰 Start tapping to earn coins.`
   );
+});
+
+bot.onText(/\/tap/, async (msg) => {
+  const userId = msg.from.id;
+
+  const user = await User.findOne({ userId });
+  if (!user) return;
+
+  user.coins += 1;
+  await user.save();
+
+  bot.sendMessage(msg.chat.id, `🔥 +1 coin added! Total: ${user.coins}`);
+});
+
+bot.onText(/\/top/, async (msg) => {
+  const top = await User.find().sort({ coins: -1 }).limit(5);
+
+  let text = "🏆 TOP USERS:\n\n";
+
+  top.forEach((u, i) => {
+    text += `${i + 1}. ${u.username} - ${u.coins} coins\n`;
+  });
+
+  bot.sendMessage(msg.chat.id, text);
+});
+
+cron.schedule("0 9 * * *", async () => {
+  const users = await User.countDocuments();
+
+  const totalCoins = await User.aggregate([
+    { $group: { _id: null, sum: { $sum: "$coins" } } }
+  ]);
+
+  const top = await User.find().sort({ coins: -1 }).limit(3);
+
+  let msg = `🔥 DAILY REPORT 🔥\n\n`;
+  msg += `👥 Users: ${users}\n`;
+  msg += `💰 Coins: ${totalCoins[0]?.sum || 0}\n\n`;
+  msg += `🏆 Top:\n`;
+
+  top.forEach((u, i) => {
+    msg += `${i + 1}. ${u.username} - ${u.coins}\n`;
+  });
+
+  bot.sendMessage(channel, msg);
+});
+
+cron.schedule("*/60 * * * *", async () => {
+  const user = await User.findOne().sort({ createdAt: -1 });
+
+  if (user) {
+    bot.sendMessage(channel,
+      `🎉 New user joined!\n👤 ${user.username}`
+    );
+  }
 });
