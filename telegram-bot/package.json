@@ -1,5 +1,5 @@
 {
-  "name": "crypto-telegram-bot",
+  "name": "studybuddy-bot",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
