@@ -1,7 +1,6 @@
 {
-  "name": "crypto-app",
-  "version": "1.0.0",
-  "description": "Crypto Tap App with Telegram bot, MongoDB, and scheduled posts",
+  "name": "crypto-pro-app",
+  "version": "2.0.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
