@@ -1,7 +1,7 @@
 {
   "name": "crypto-app",
   "version": "1.0.0",
-  "description": "Crypto Tap App with Telegram Bot",
+  "description": "Crypto Tap App with Telegram bot, MongoDB, and scheduled posts",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -14,6 +14,7 @@
     "mongoose": "^8.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "node-telegram-bot-api": "^0.66.0"
+    "node-telegram-bot-api": "^0.66.0",
+    "node-cron": "^3.0.3"
   }
 }
