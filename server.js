@@ -1,21 +1,28 @@
 const express = require('express');
-const dotenv = require('dotenv');
+const mongoose = require('mongoose');
 const cors = require('cors');
-const connectDB = require('./config/db');
-
-dotenv.config();
-connectDB();
+require('dotenv').config();
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-app.use('/api', require('./routes/userRoutes'));
+// routes
+const userRoutes = require('./routes/userRoutes');
+app.use('/api', userRoutes);
 
+// home route
 app.get('/', (req, res) => {
   res.send('Crypto App Running 🚀');
 });
 
-app.listen(process.env.PORT, () => {
-  console.log("Server running on port", process.env.PORT);
+// mongo connect
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB Connected ✅"))
+  .catch(err => console.log(err));
+
+// start server
+app.listen(process.env.PORT || 10000, () => {
+  console.log("Server running on port", process.env.PORT || 10000);
 });
