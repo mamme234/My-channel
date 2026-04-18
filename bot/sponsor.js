@@ -1,13 +1,13 @@
-const bot = require('./telegramBot');
+const bot = require('./bot/telegramBot');
 
 const CHANNEL = process.env.CHANNEL;
 
-function postSponsor(message) {
+function postToChannel(message) {
   return bot.sendMessage(CHANNEL, message, {
     parse_mode: 'HTML'
   })
-  .then(() => console.log("✅ Post sent"))
+  .then(() => console.log("✅ Posted"))
   .catch(err => console.log("❌ Error:", err.message));
 }
 
-module.exports = postSponsor;
+module.exports = postToChannel;
