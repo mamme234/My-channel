@@ -1,28 +1,29 @@
 const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-require('dotenv').config();
+const dotenv = require('dotenv');
+
+dotenv.config();
 
 const app = express();
-
-app.use(cors());
 app.use(express.json());
 
-// routes
-const userRoutes = require('./routes/userRoutes');
-app.use('/api', userRoutes);
+// import sponsor function
+const postSponsor = require('./bot/sponsor');
 
-// home route
+// TEST ROUTE (THIS IS IMPORTANT)
+app.get('/test-sponsor', async (req, res) => {
+  await postSponsor("🔥 TEST SPONSOR MESSAGE FROM SERVER");
+  res.send("Sponsor test sent 🚀");
+});
+
 app.get('/', (req, res) => {
   res.send('Crypto App Running 🚀');
 });
 
-// mongo connect
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB Connected ✅"))
-  .catch(err => console.log(err));
+const PORT = process.env.PORT || 10000;
 
-// start server
-app.listen(process.env.PORT || 10000, () => {
-  console.log("Server running on port", process.env.PORT || 10000);
+app.listen(PORT, () => {
+  console.log("Server running on port", PORT);
+
+  // AUTO TEST ON START (optional)
+  postSponsor("🔥 Bot started successfully");
 });
