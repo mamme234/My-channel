@@ -1,4 +1,4 @@
-const bot = require('./bot/telegramBot');
+const bot = require('./telegramBot');
 
 const CHANNEL = process.env.CHANNEL;
 
