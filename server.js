@@ -15,12 +15,26 @@ const PORT = process.env.PORT || 3000;
 // ================= BOT =================
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
-// ================= START =================
-bot.onText(/\/start/, async (msg) => {
+// ================= START (UPDATED) =================
+bot.onText(/\/start(.*)/, async (msg) => {
   const chatId = msg.chat.id;
 
   bot.sendMessage(chatId,
-    `👋 Welcome!\n\n💰 Tap to earn coins\n🚀 Invite friends for bonus\n\nUse /balance to check coins`
+    `👋 Welcome!\n\n💰 Tap to earn coins\n🚀 Invite friends for bonus`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "🔥 Open App",
+              web_app: {
+                url: "https://myapp1-khaki.vercel.app"
+              }
+            }
+          ]
+        ]
+      }
+    }
   );
 });
 
