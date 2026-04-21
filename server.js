@@ -8,68 +8,69 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// bot system
 const postToChannel = require('./bot/sponsor');
 
-// DB connect
+// ======================
+// 🔗 DB CONNECT
+// ======================
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB Connected ✅"));
+  .then(() => console.log("MongoDB Connected ✅"))
+  .catch(err => console.log(err));
 
 // ======================
-// 💰 EARN API (SAFE)
-// ======================
-app.post('/api/earn', async (req, res) => {
-  const { username, coins } = req.body;
-
-  if (!username || !coins || coins > 100) {
-    return res.status(400).json({ error: "Invalid request" });
-  }
-
-  postToChannel(`💰 Earn Update\n👤 ${username}\n🪙 +${coins}`);
-
-  res.json({ success: true });
-});
-
-// ======================
-// 🏆 LEADERBOARD (basic)
-// ======================
-app.get('/api/leaderboard', (req, res) => {
-  res.json([
-    { user: "Ali", coins: 1200 },
-    { user: "Sara", coins: 900 }
-  ]);
-});
-
-// ======================
-// 💸 WITHDRAW (basic)
-// ======================
-app.post('/api/withdraw', (req, res) => {
-  const { username, amount } = req.body;
-
-  postToChannel(`💸 Withdrawal Request\n👤 ${username}\n💰 $${amount}`);
-
-  res.json({ success: true });
-});
-
-// ======================
-// ⏰ SCHEDULER (PRO)
+// 🌐 ROUTES
 // ======================
 
-// hourly update
-cron.schedule('0 * * * *', () => {
-  postToChannel("⏰ Hourly Bonus Active 🚀");
-});
-
-// daily update
-cron.schedule('0 9 * * *', () => {
-  postToChannel("📅 Daily Reward is live 🎁");
-});
-
-// ======================
 app.get('/', (req, res) => {
-  res.send("Crypto Pro App Running 🚀");
+  res.send("🚀 Crypto App Running");
 });
 
-app.listen(process.env.PORT || 10000, () => {
-  console.log("Server running");
+// 🔥 TEST ROUTE
+app.get('/test-post', async (req, res) => {
+  await postToChannel("🔥 Manual test post working");
+  res.send("Posted to Telegram ✅");
+});
+
+// ======================
+// ⏰ CRON JOBS (FIXED)
+// ======================
+
+// 🧪 TEST EVERY MINUTE (REMOVE AFTER TEST)
+cron.schedule('*/1 * * * *', () => {
+  console.log("🔥 TEST CRON RUNNING EVERY MINUTE");
+
+  postToChannel("🔥 Cron test working (every minute)");
+}, {
+  timezone: "Africa/Addis_Ababa"
+});
+
+// ⏰ HOURLY POST
+cron.schedule('0 * * * *', () => {
+  console.log("⏰ Hourly cron triggered");
+
+  postToChannel("⏰ Hourly Bonus Active 🚀");
+}, {
+  timezone: "Africa/Addis_Ababa"
+});
+
+// 📅 DAILY POST (9 AM ETHIOPIA TIME)
+cron.schedule('0 9 * * *', () => {
+  console.log("📅 Daily cron triggered");
+
+  postToChannel("📅 Daily Reward Available 🎁");
+}, {
+  timezone: "Africa/Addis_Ababa"
+});
+
+// ======================
+// 🚀 START SERVER
+// ======================
+
+const PORT = process.env.PORT || 10000;
+
+app.listen(PORT, () => {
+  console.log("Server running on port", PORT);
+
+  // startup message (optional)
+  postToChannel("🤖 Bot is live and scheduler started");
 });
