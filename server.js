@@ -15,7 +15,7 @@ const postToChannel = require('./bot/sponsor');
 // ======================
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected ✅"))
-  .catch(err => console.log(err));
+  .catch(err => console.log("DB Error:", err));
 
 // ======================
 // 🌐 ROUTES
@@ -27,37 +27,41 @@ app.get('/', (req, res) => {
 
 // 🔥 TEST ROUTE
 app.get('/test-post', async (req, res) => {
-  await postToChannel("🔥 Manual test post working");
-  res.send("Posted to Telegram ✅");
+  try {
+    await postToChannel("🔥 Manual test post working");
+    res.send("Posted to Telegram ✅");
+  } catch (err) {
+    res.send("Error posting ❌");
+  }
 });
 
 // ======================
-// ⏰ CRON JOBS (FIXED)
+// 🔥 SAFE CRON WRAPPER
 // ======================
+function safePost(message) {
+  postToChannel(message).catch(err => {
+    console.log("Telegram Error:", err.message);
+  });
+}
 
-// 🧪 TEST EVERY MINUTE (REMOVE AFTER TEST)
-cron.schedule('*/1 * * * *', () => {
-  console.log("🔥 TEST CRON RUNNING EVERY MINUTE");
-
-  postToChannel("🔥 Cron test working (every minute)");
-}, {
-  timezone: "Africa/Addis_Ababa"
-});
+// ======================
+// ⏰ CRON JOBS (PRO FIXED)
+// ======================
 
 // ⏰ HOURLY POST
 cron.schedule('0 * * * *', () => {
   console.log("⏰ Hourly cron triggered");
 
-  postToChannel("⏰ Hourly Bonus Active 🚀");
+  safePost("⏰ Hourly Bonus Active 🚀");
 }, {
   timezone: "Africa/Addis_Ababa"
 });
 
-// 📅 DAILY POST (9 AM ETHIOPIA TIME)
+// 📅 DAILY POST (9 AM)
 cron.schedule('0 9 * * *', () => {
   console.log("📅 Daily cron triggered");
 
-  postToChannel("📅 Daily Reward Available 🎁");
+  safePost("📅 Daily Reward Available 🎁");
 }, {
   timezone: "Africa/Addis_Ababa"
 });
@@ -68,9 +72,9 @@ cron.schedule('0 9 * * *', () => {
 
 const PORT = process.env.PORT || 10000;
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log("Server running on port", PORT);
 
-  // startup message (optional)
-  postToChannel("🤖 Bot is live and scheduler started");
+  // safer startup message (only once per deploy)
+  safePost("🤖 Bot started successfully 🚀");
 });
