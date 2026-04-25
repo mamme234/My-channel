@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { earnCoins } = require('../controllers/userController');
 
-// IMPORTANT: POST route
-router.post('/earn', earnCoins);
+const { earn } = require('../controllers/userController');
+
+router.post('/earn', earn);
 
 module.exports = router;
