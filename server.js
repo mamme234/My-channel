@@ -30,6 +30,12 @@ app.get('/', (req, res) => {
   res.send("🚀 PRO APP RUNNING");
 });
 
+// 👇 ADD THIS HERE
+app.get('/test', async (req, res) => {
+  await postToChannel("🔥 TEST POST WORKING");
+  res.send("done");
+});
+
 // ======================
 // 🖱️ TAP SYSTEM
 // ======================
