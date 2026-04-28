@@ -49,7 +49,7 @@
 const username = prompt("Enter username:");
 
 async function tap() {
-  const res = await fetch("https://your-app.onrender.com/api/tap", {
+  const res = await fetch("https://my-channel-1.onrender.com/api/tap", {
     method: "POST",
     headers: {"Content-Type":"application/json"},
     body: JSON.stringify({ username })
