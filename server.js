@@ -67,3 +67,69 @@ app.post('/api/tap', async (req, res) => {
 
   res.json({ coins: user.coins });
 });
+// ======================
+// GLOBAL MOTIVATION (every 2 hours)
+// ======================
+const globalMessages = [
+  "🔥 Keep earning!",
+  "💰 Stay active!",
+  "🚀 Don’t stop!",
+  "🎯 Stay consistent!"
+];
+
+cron.schedule('0 */2 * * *', () => {
+  const msg = globalMessages[Math.floor(Math.random() * globalMessages.length)];
+  postToChannel(`📢 ${msg}`);
+}, {
+  timezone: "Africa/Addis_Ababa"
+});
+
+// ======================
+// LEADERBOARD (every 6 hours)
+// ======================
+cron.schedule('0 */6 * * *', async () => {
+  const top = await User.find().sort({ coins: -1 }).limit(5);
+
+  let text = `🏆 Top Users\n\n`;
+  top.forEach((u, i) => {
+    text += `${i + 1}. ${u.username} - ${u.coins} 🪙\n`;
+  });
+
+  postToChannel(text);
+}, {
+  timezone: "Africa/Addis_Ababa"
+});
+
+// ======================
+// DAILY STATS
+// ======================
+cron.schedule('0 20 * * *', async () => {
+  const totalUsers = await User.countDocuments();
+  const coins = await User.aggregate([
+    { $group: { _id: null, total: { $sum: "$coins" } } }
+  ]);
+
+  const totalCoins = coins[0]?.total || 0;
+
+  postToChannel(`
+📊 Stats
+
+👥 Users: ${totalUsers}
+🪙 Coins: ${totalCoins}
+  `);
+}, {
+  timezone: "Africa/Addis_Ababa"
+});
+
+// ======================
+// DAILY REWARD
+// ======================
+cron.schedule('0 9 * * *', () => {
+  postToChannel("🎁 Daily reward is live!");
+}, {
+  timezone: "Africa/Addis_Ababa"
+});const PORT = process.env.PORT || 10000;
+
+app.listen(PORT, () => {
+  console.log("Server running on port", PORT);
+});
