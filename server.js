@@ -35,7 +35,7 @@ app.post('/api/tap', async (req, res) => {
 
   if (!username) return res.json({ error: "No username" });
 
-  let user = await User.findOne({ username);
+  let user = await User.findOne({ username });
   if (!user) user = new User({ username });
 
   const now = Date.now();
