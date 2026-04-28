@@ -9,72 +9,61 @@ app.use(cors());
 app.use(express.json());
 
 const postToChannel = require('./bot/sponsor');
+const User = require('./models/User');
 
 // ======================
-// 🔗 DB CONNECT
+// DB CONNECT
 // ======================
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected ✅"))
-  .catch(err => console.log("DB Error:", err));
+  .catch(err => console.log(err));
 
 // ======================
-// 🌐 ROUTES
+// ROOT
 // ======================
-
 app.get('/', (req, res) => {
-  res.send("🚀 Crypto App Running");
+  res.send("🚀 PRO APP RUNNING");
 });
 
-// 🔥 TEST ROUTE
-app.get('/test-post', async (req, res) => {
-  try {
-    await postToChannel("🔥 Manual test post working");
-    res.send("Posted to Telegram ✅");
-  } catch (err) {
-    res.send("Error posting ❌");
+// ======================
+// 🖱️ TAP SYSTEM
+// ======================
+const lastPost = {};
+
+app.post('/api/tap', async (req, res) => {
+  const { username } = req.body;
+
+  if (!username) return res.json({ error: "No username" });
+
+  let user = await User.findOne({ username);
+  if (!user) user = new User({ username });
+
+  const now = Date.now();
+
+  // anti-spam tap
+  if (now - user.lastTap < 1000) {
+    return res.json({ error: "Too fast" });
   }
-});
 
-// ======================
-// 🔥 SAFE CRON WRAPPER
-// ======================
-function safePost(message) {
-  postToChannel(message).catch(err => {
-    console.log("Telegram Error:", err.message);
-  });
-}
+  user.coins += 1;
+  user.lastTap = now;
+  await user.save();
 
-// ======================
-// ⏰ CRON JOBS (PRO FIXED)
-// ======================
+  // 🧠 smart post (limit per user)
+  if (!lastPost[username] || now - lastPost[username] > 120000) {
 
-// ⏰ HOURLY POST
-cron.schedule('0 * * * *', () => {
-  console.log("⏰ Hourly cron triggered");
+    const messages = [
+      `🔥 ${username} is on fire!`,
+      `💰 ${username} is earning fast!`,
+      `🚀 ${username} is climbing up!`,
+      `🎯 ${username} keeps grinding!`
+    ];
 
-  safePost("⏰ Hourly Bonus Active 🚀");
-}, {
-  timezone: "Africa/Addis_Ababa"
-});
+    const msg = messages[Math.floor(Math.random() * messages.length)];
+    postToChannel(msg);
 
-// 📅 DAILY POST (9 AM)
-cron.schedule('0 9 * * *', () => {
-  console.log("📅 Daily cron triggered");
+    lastPost[username] = now;
+  }
 
-  safePost("📅 Daily Reward Available 🎁");
-}, {
-  timezone: "Africa/Addis_Ababa"
-});
-
-// ======================
-// 🚀 START SERVER
-// ======================
-
-const PORT = process.env.PORT || 10000;
-
-app.listen(PORT, async () => {
-  console.log("Server running on port", PORT);
-
-  // safer startup message (only once per deploy)
-  safePost("🤖 Bot started successfully 🚀");
+  res.json({ coins: user.coins });
 });
