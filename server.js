@@ -5,8 +5,13 @@ const cron = require('node-cron');
 require('dotenv').config();
 
 const app = express();
+
+// ✅ MIDDLEWARE
 app.use(cors());
 app.use(express.json());
+
+// ✅ ADD IT HERE
+app.use(express.static('public'));
 
 const postToChannel = require('./bot/sponsor');
 const User = require('./models/User');
