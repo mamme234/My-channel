@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Tap Earn</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      margin:0;
+      font-family:Arial;
+      background:#0d1117;
+      color:white;
+      text-align:center;
+    }
+
+    .container {
+      margin-top:100px;
+    }
+
+    .coin {
+      font-size:50px;
+      margin-bottom:20px;
+    }
+
+    .btn {
+      padding:20px 40px;
+      font-size:22px;
+      border:none;
+      border-radius:15px;
+      background:#00c853;
+      color:white;
+    }
+
+    .btn:active {
+      transform:scale(0.95);
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+  <div class="coin">🪙 <span id="coins">0</span></div>
+
+  <button class="btn" onclick="tap()">TAP</button>
+</div>
+
+<script>
+const username = prompt("Enter username:");
+
+async function tap() {
+  const res = await fetch("https://your-app.onrender.com/api/tap", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ username })
+  });
+
+  const data = await res.json();
+
+  if(data.coins !== undefined){
+    document.getElementById("coins").innerText = data.coins;
+  }
+}
+</script>
+
+</body>
+</html>
