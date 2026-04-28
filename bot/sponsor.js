@@ -1,6 +1,9 @@
 const bot = require('./telegramBot');
 
-module.exports = function(message) {
+function postToChannel(message) {
   return bot.sendMessage(process.env.CHANNEL, message)
-    .catch(err => console.log("Telegram error:", err.message));
-};
+    .then(() => console.log("✅ Posted to channel"))
+    .catch(err => console.log("❌ Telegram error:", err.message));
+}
+
+module.exports = postToChannel;
