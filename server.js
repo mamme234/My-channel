@@ -5,13 +5,19 @@ const cron = require("node-cron");
 require("dotenv").config();
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
 // ======================
-// BOT FUNCTION
+// BOT IMPORT
 // ======================
 const postToChannel = require("./bot/sponsor");
+
+// ======================
+// BOT LINK
+// ======================
+const BOT_LINK = "https://t.me/Studybuddy_2025Bot";
 
 // ======================
 // DB CONNECT
@@ -21,71 +27,94 @@ mongoose.connect(process.env.MONGO_URI)
 .catch(err => console.log("DB Error:", err));
 
 // ======================
-// BASIC ROUTE
+// HOME ROUTE
 // ======================
 app.get("/", (req, res) => {
-  res.send("🚀 Crypto App Running");
+  res.send("🚀 Venoms Channel Server Running");
 });
 
 // ======================
-// TEST POST ROUTE
+// POST API (for frontend)
 // ======================
 app.post("/post", async (req, res) => {
   const { message } = req.body;
 
   await postToChannel(message);
 
-  res.json({ success: true, message: "Posted ✅" });
+  res.json({ success: true });
 });
 
 // ======================
-// MOTIVATION SYSTEM
+// CLEAN MOTIVATION POSTS
 // ======================
+const posts = [
+`🐍 VENOMS POWER
 
-const messages = [
-"🔥 Keep going! Success is near!",
-"💰 Every tap brings you closer to wealth!",
-"🚀 Don’t stop now — you’re building your future!",
-"⚡ Winners never quit, quitters never win!",
-"📈 Small steps = Big results!",
-"💎 Stay consistent and get rewarded!"
+🔥 Success is built daily — not overnight
+
+💰 Tap • Earn • Grow
+
+🚀 Start here: ${BOT_LINK}`,
+
+`🚀 DON’T WAIT
+
+💎 Early users always win more
+
+⚡ Join now and start earning
+
+👉 ${BOT_LINK}`,
+
+`🔥 DAILY MOTIVATION
+
+💪 Discipline creates success
+
+💰 Your first step starts today
+
+🚀 Join: ${BOT_LINK}`,
+
+`⚡ VENOMS ALERT
+
+📈 Growth happens when you start
+
+💰 Don’t miss early rewards
+
+👉 ${BOT_LINK}`
 ];
 
-function getRandomMessage() {
-  return messages[Math.floor(Math.random() * messages.length)];
+function getPost() {
+  return posts[Math.floor(Math.random() * posts.length)];
 }
 
 // ======================
 // ⏰ EVERY 2 HOURS POST
 // ======================
 cron.schedule("0 */2 * * *", async () => {
-  console.log("⏰ 2 Hour Motivation Triggered");
+  console.log("⏰ 2-hour post running");
 
-  const msg = getRandomMessage();
-
-  await postToChannel(`
-🐍 *Crypto Tap Pro Motivation*
-
-${msg}
-
-💪 Stay active and keep earning!
-  `);
+  try {
+    await postToChannel(getPost());
+  } catch (err) {
+    console.log("Telegram error:", err.message);
+  }
 
 }, {
   timezone: "Africa/Addis_Ababa"
 });
 
 // ======================
-// DAILY BONUS POST (OPTIONAL)
+// DAILY BOOST POST (9 AM)
 // ======================
 cron.schedule("0 9 * * *", async () => {
-  console.log("📅 Daily Bonus Triggered");
+  console.log("📅 Daily post running");
 
   await postToChannel(`
-🎁 *Daily Reward Time!*
+🎁 DAILY BONUS TIME
 
-🔥 New bonus is available now!
-💰 Log in and claim your reward!
+🔥 New rewards are active now!
+
+💰 Tap & earn inside the app
+
+🚀 Start: ${BOT_LINK}
   `);
 
 }, {
@@ -100,5 +129,5 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log("Server running on port", PORT);
 
-  postToChannel("🤖 Bot is online & 2-hour scheduler started");
+  postToChannel("🤖 Venoms Bot is online & scheduler active");
 });
