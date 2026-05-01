@@ -5,7 +5,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const BOT_TOKEN = "YOUR_BOT_TOKEN";
+const BOT_TOKEN = "8344006616:AAFtsVrXi8xRAtbyWHeMxsXk_X3ntE3xRMk";
 const CHAT_ID = "@gangs234";
 
 // send message to Telegram channel
