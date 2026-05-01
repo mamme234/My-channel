@@ -1,49 +1,104 @@
-const express = require('express');
-const cors = require('cors');
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const cron = require("node-cron");
+require("dotenv").config();
 
 const app = express();
-app.use(express.json());
 app.use(cors());
+app.use(express.json());
 
-const BOT_TOKEN = "8344006616:AAFtsVrXi8xRAtbyWHeMxsXk_X3ntE3xRMk";
-const CHAT_ID = "@gangs234";
+// ======================
+// BOT FUNCTION
+// ======================
+const postToChannel = require("./bot/sponsor");
 
-// send message to Telegram channel
-async function sendToChannel(text) {
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+// ======================
+// DB CONNECT
+// ======================
+mongoose.connect(process.env.MONGO_URI)
+.then(() => console.log("MongoDB Connected ✅"))
+.catch(err => console.log("DB Error:", err));
 
-    await fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            chat_id: CHAT_ID,
-            text: text,
-            parse_mode: "Markdown"
-        })
-    });
+// ======================
+// BASIC ROUTE
+// ======================
+app.get("/", (req, res) => {
+  res.send("🚀 Crypto App Running");
+});
+
+// ======================
+// TEST POST ROUTE
+// ======================
+app.post("/post", async (req, res) => {
+  const { message } = req.body;
+
+  await postToChannel(message);
+
+  res.json({ success: true, message: "Posted ✅" });
+});
+
+// ======================
+// MOTIVATION SYSTEM
+// ======================
+
+const messages = [
+"🔥 Keep going! Success is near!",
+"💰 Every tap brings you closer to wealth!",
+"🚀 Don’t stop now — you’re building your future!",
+"⚡ Winners never quit, quitters never win!",
+"📈 Small steps = Big results!",
+"💎 Stay consistent and get rewarded!"
+];
+
+function getRandomMessage() {
+  return messages[Math.floor(Math.random() * messages.length)];
 }
 
-// API endpoint
-app.post('/post', async (req, res) => {
-    const { message } = req.body;
+// ======================
+// ⏰ EVERY 2 HOURS POST
+// ======================
+cron.schedule("0 */2 * * *", async () => {
+  console.log("⏰ 2 Hour Motivation Triggered");
 
-    if (!message) {
-        return res.json({ success: false, error: "No message" });
-    }
+  const msg = getRandomMessage();
 
-    try {
-        await sendToChannel(message);
-        res.json({ success: true });
-    } catch (err) {
-        res.json({ success: false, error: err.message });
-    }
+  await postToChannel(`
+🐍 *Crypto Tap Pro Motivation*
+
+${msg}
+
+💪 Stay active and keep earning!
+  `);
+
+}, {
+  timezone: "Africa/Addis_Ababa"
 });
 
-app.get('/', (req, res) => {
-    res.send("🚀 Venoms server running");
+// ======================
+// DAILY BONUS POST (OPTIONAL)
+// ======================
+cron.schedule("0 9 * * *", async () => {
+  console.log("📅 Daily Bonus Triggered");
+
+  await postToChannel(`
+🎁 *Daily Reward Time!*
+
+🔥 New bonus is available now!
+💰 Log in and claim your reward!
+  `);
+
+}, {
+  timezone: "Africa/Addis_Ababa"
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Running on port " + PORT));
+// ======================
+// START SERVER
+// ======================
+const PORT = process.env.PORT || 10000;
+
+app.listen(PORT, () => {
+  console.log("Server running on port", PORT);
+
+  postToChannel("🤖 Bot is online & 2-hour scheduler started");
+});
