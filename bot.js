@@ -73,26 +73,26 @@ function sendDailyPost() {
 🔥 Stay active, earn more daily!
 `;
 
-  bot.sendMessage(CHANNEL, message, {
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: "🚀 Start Earning",
-            url: "https://t.me/Studybuddy_2025Bot/app"
-          }
-        ],
-        [
-          {
-            text: "📢 Join Channel",
-            url: "https://t.me/gangs234"
-          }
-        ]
-      ]
-    }
-  });
-} // ✅ THIS WAS MISSING
+  bot.sendMessage(CHANNEL, `
+🚀 DAILY SIGN-IN ALERT
 
+💰 You haven’t signed in today!
+🎁 Claim your GEM rewards now
+
+⏳ Don’t miss today’s bonus
+`, {
+  reply_markup: {
+    inline_keyboard: [
+      [
+        {
+          text: "💰 Earn My $",
+          url: "https://t.me/Studybuddy_2025Bot/app"
+        }
+      ]
+    ]
+  }
+});
+} // ✅ THIS WAS MISSING
 /* =========================
    🔥 DAILY MESSAGE TO USERS
 ========================= */
