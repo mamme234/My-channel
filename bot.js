@@ -1,107 +1,86 @@
 const TelegramBot = require("node-telegram-bot-api");
+const fs = require("fs");
 
-// 🔑 BOT TOKEN (replace this)
-const token = "8344006616:AAFtsVrXi8xRAtbyWHeMxsXk_X3ntE3xRMk";
-
+const token = "YOUR_BOT_TOKEN_HERE";
 const bot = new TelegramBot(token, { polling: true });
 
-// 📢 Your channel + bot info
-const CHANNEL = "@gangs234";
-const BOT_USERNAME = "Studybuddy_2025Bot";
+const USERS_FILE = "users.json";
+
+// Load users
+let users = [];
+if (fs.existsSync(USERS_FILE)) {
+  users = JSON.parse(fs.readFileSync(USERS_FILE));
+}
+
+// Save users
+function saveUsers() {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users));
+}
 
 /* =========================
-   START COMMAND
+   SAVE USER ON START
 ========================= */
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
 
-  const message = `
-🔥 WELCOME TO STUDYBUDDY 🔥
+  if (!users.includes(chatId)) {
+    users.push(chatId);
+    saveUsers();
+  }
 
-💰 Learn, Tap & Earn Daily Rewards
-📚 Stay active to unlock bonuses
+  bot.sendMessage(chatId, `
+🔥 Welcome to StudyBuddy!
 
-⚠️ Inactive users miss daily rewards
-🚀 Start now and grow your balance!
-`;
+💰 Start earning daily rewards
+📚 Stay active and grow
 
-  bot.sendMessage(chatId, message, {
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: "📢 Join Channel",
-            url: "https://t.me/gangs234"
-          }
-        ],
-        [
-          {
-            text: "🚀 Start Earning",
-            url: `https://t.me/${BOT_USERNAME}`
-          }
-        ]
-      ]
-    }
-  });
+🚀 Open daily and don't miss bonuses!
+`);
 });
 
 /* =========================
-   DAILY CHANNEL POST
+   ADMIN BROADCAST COMMAND
 ========================= */
-function sendDailyPost() {
+const ADMIN_ID = 123456789; // 🔴 PUT YOUR TELEGRAM ID
+
+bot.onText(/\/broadcast (.+)/, (msg, match) => {
+  if (msg.chat.id != ADMIN_ID) return;
+
+  const text = match[1];
+
+  users.forEach((userId) => {
+    bot.sendMessage(userId, text).catch(() => {});
+  });
+
+  bot.sendMessage(ADMIN_ID, "✅ Broadcast sent!");
+});
+
+/* =========================
+   AUTO DAILY MESSAGE
+========================= */
+function sendDailyToUsers() {
   const message = `
 ⚠️ DAILY BONUS ALERT ⚠️
 
-💰 Your rewards are ready today!
+💰 Your rewards are ready!
 
-👉 Open bot @Studybuddy_2025Bot
-👉 Complete daily tasks
-👉 Claim your reward instantly
+👉 Open @Studybuddy_2025Bot
+👉 Tap & complete tasks
+👉 Claim today’s bonus
 
-⏳ Only active users get bonuses
-🔥 Stay active, earn more daily!
+⏳ Only active users get rewards
+🔥 Don't miss today!
 `;
 
-  bot.sendMessage(CHANNEL, message, {
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: "🚀 Start Bot",
-            url: `https://t.me/${BOT_USERNAME}`
-          }
-        ],
-        [
-          {
-            text: "📢 Join Channel",
-            url: "https://t.me/gangs234"
-          }
-        ]
-      ]
-    }
+  users.forEach((userId) => {
+    bot.sendMessage(userId, message).catch(() => {});
   });
 }
 
-/* =========================
-   AUTO DAILY SYSTEM (24H)
-========================= */
-setInterval(() => {
-  sendDailyPost();
-}, 24 * 60 * 60 * 1000);
+// send every 24 hours
+setInterval(sendDailyToUsers, 24 * 60 * 60 * 1000);
 
 // send once when bot starts
-sendDailyPost();
+sendDailyToUsers();
 
-/* =========================
-   OPTIONAL: FORCE ACTIVITY MESSAGE
-========================= */
-bot.on("callback_query", (query) => {
-  if (query.data === "start") {
-    bot.sendMessage(
-      query.message.chat.id,
-      "🚀 Open the bot and start earning coins daily!"
-    );
-  }
-});
-
-console.log("🚀 StudyBuddy Bot is running...");
+console.log("🚀 Bot running with user broadcast system");
