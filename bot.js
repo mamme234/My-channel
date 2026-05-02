@@ -83,11 +83,10 @@ function sendDailyPost() {
         }
       ],
       [
-        {
-          text: "🚀 Start Earning",
-          web_app: {
-  url: `https://myapp1-khaki.vercel.app/?user_id=${chatId}`
-          }
+ {
+  text: "🚀 Start Earning",
+  url: "https://t.me/Studybuddy_2025Bot?startapp"
+      }
         }
       ]
     ]
