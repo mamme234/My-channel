@@ -73,15 +73,26 @@ function sendDailyPost() {
 🔥 Stay active, earn more daily!
 `;
 
-  bot.sendMessage(CHANNEL, message, {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "🚀 Start Bot", url: `https://t.me/${BOT_USERNAME}` }],
-        [{ text: "📢 Join Channel", url: "https://t.me/gangs234" }]
+  bot.sendMessage(chatId, message, {
+  reply_markup: {
+    inline_keyboard: [
+      [
+        {
+          text: "📢 Join Channel",
+          url: "https://t.me/gangs234"
+        }
+      ],
+      [
+        {
+          text: "🚀 Start Earning",
+          web_app: {
+  url: `https://myapp1-khaki.vercel.app/?user_id=${chatId}`
+          }
+        }
       ]
-    }
-  });
-}
+    ]
+  }
+});
 
 /* =========================
    🔥 DAILY MESSAGE TO USERS
