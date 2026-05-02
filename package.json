@@ -1,14 +1,25 @@
 {
   "name": "studybuddy-bot",
   "version": "1.0.0",
-  "main": "bot.js",
+  "description": "Telegram earning bot with referral, daily rewards, and mini app integration",
+  "main": "index.js",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
+  "keywords": [
+    "telegram",
+    "bot",
+    "earn",
+    "referral",
+    "miniapp"
+  ],
+  "author": "StudyBuddy",
+  "license": "ISC",
   "dependencies": {
     "node-telegram-bot-api": "^0.66.0"
   },
-  "engines": {
-    "node": ">=18.x"
+  "devDependencies": {
+    "nodemon": "^3.0.0"
   }
 }
