@@ -41,7 +41,7 @@ bot.onText(/\/start/, (msg) => {
 /* =========================
    ADMIN BROADCAST COMMAND
 ========================= */
-const ADMIN_ID = 123456789; // 🔴 PUT YOUR TELEGRAM ID
+const ADMIN_ID = 7154361039; // 🔴 PUT YOUR TELEGRAM ID
 
 bot.onText(/\/broadcast (.+)/, (msg, match) => {
   if (msg.chat.id != ADMIN_ID) return;
