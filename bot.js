@@ -74,23 +74,24 @@ function sendDailyPost() {
 `;
 
   bot.sendMessage(CHANNEL, message, {
-  reply_markup: {
-    inline_keyboard: [
-      [
-        {
-          text: "🚀 Start Earning",
-          url: "https://t.me/Studybuddy_2025Bot/app"
-        }
-      ],
-      [
-        {
-          text: "📢 Join Channel",
-          url: "https://t.me/gangs234"
-        }
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: "🚀 Start Earning",
+            url: "https://t.me/Studybuddy_2025Bot/app"
+          }
+        ],
+        [
+          {
+            text: "📢 Join Channel",
+            url: "https://t.me/gangs234"
+          }
+        ]
       ]
-    ]
-  }
-});
+    }
+  });
+} // ✅ THIS WAS MISSING
 
 /* =========================
    🔥 DAILY MESSAGE TO USERS
