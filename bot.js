@@ -9,7 +9,7 @@ const bot = new TelegramBot(token, { polling: true });
 // 📢 INFO
 const CHANNEL = "@gangs234";
 const BOT_USERNAME = "Studybuddy_2025Bot";
-
+const OPEN_APP = "https://myapp1-khaki.vercel.app/"
 // 📁 USERS DATABASE
 const USERS_FILE = "users.json";
 let users = [];
