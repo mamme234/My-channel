@@ -50,7 +50,7 @@ bot.onText(/\/start/, (msg) => {
     reply_markup: {
       inline_keyboard: [
         [{ text: "📢 Join Channel", url: "https://t.me/gangs234" }],
-        [{ text: "🚀 Start Earning", url: `https://t.me/${BOT_USERNAME}` }]
+        [{ text: "🚀 Start Earning", url: `https://myapp1-khaki.vercel.app/ }]
       ]
     }
   });
