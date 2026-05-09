@@ -1,29 +1,35 @@
 const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
 
-const token = "8344006616:AAFtsVrXi8xRAtbyWHeMxsXk_X3ntE3xRMk";
-const bot = new TelegramBot(token, { polling: true });
+const token = "8344006616:AAFkf3s7tKQaqSYm1d-4d1yMbIOoKpQFB7Q";
+
+const bot = new TelegramBot(token, {
+  polling: true
+});
 
 const CHANNEL = "@gangs234";
 const BOT_USERNAME = "Studybuddy_2025Bot";
 const MINI_APP = "https://myapp1-khaki.vercel.app/";
+
 const USERS_FILE = "users.json";
-const ADMIN_ID = 7154361039;
 
 let users = [];
 
+// Load users
 if (fs.existsSync(USERS_FILE)) {
   users = JSON.parse(fs.readFileSync(USERS_FILE));
 }
 
+// Save users
 function saveUsers() {
   fs.writeFileSync(USERS_FILE, JSON.stringify(users));
 }
 
-// START
-bot.onText(/\/start/, async (msg) => {
+/* START COMMAND */
+bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
 
+  // Save user
   if (!users.includes(chatId)) {
     users.push(chatId);
     saveUsers();
@@ -33,40 +39,38 @@ bot.onText(/\/start/, async (msg) => {
 🔥 WELCOME TO STUDYBUDDY
 
 💰 Earn rewards daily
-🎁 Complete tasks and stay active
-⚡ Open the app every day to grow faster
+🚀 Open app and stay active
 `;
 
-  bot.sendMessage(chatId, message, {
-  reply_markup: {
-    inline_keyboard: [
-      [
-        {
-          text: "📢 Join Channel",
-          url: "https://t.me/gangs234"
-        }
-      ],
-      [
-        {
-          text: "🚀 Start Earning",
-          web_app: {
-            url: "https://myapp1-khaki.vercel.app/"
+  bot.sendMessage(chatId, text, {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: "🚀 Start Earning",
+            web_app: {
+              url: MINI_APP
+            }
           }
-        }
+        ],
+        [
+          {
+            text: "📢 Join Channel",
+            url: "https://t.me/gangs234"
+          }
+        ]
       ]
-    ]
-  }
+    }
+  });
 });
 
-// DAILY CHANNEL POST
+/* DAILY CHANNEL POST */
 function sendDailyPost() {
   const text = `
-🚨 DAILY LOGIN ALERT 🚨
+🚨 DAILY LOGIN ALERT
 
-💎 Your daily reward is waiting!
-⏰ Open now before today ends.
-
-🔥 Active users earn more every day.
+💰 Your reward is waiting!
+⏳ Open app before today ends.
 `;
 
   bot.sendMessage(CHANNEL, text, {
@@ -83,15 +87,12 @@ function sendDailyPost() {
   });
 }
 
-// DAILY MESSAGE TO USERS
+/* DAILY USER REMINDER */
 function sendDailyReminder() {
   const text = `
-⚠️ DAILY BONUS READY ⚠️
+⚠️ DAILY BONUS READY
 
-🎁 Your reward is available now.
-🚀 Open the app and claim it.
-
-⏳ Missing today = losing rewards.
+🎁 Open the app now and claim reward.
 `;
 
   users.forEach((userId) => {
@@ -112,23 +113,12 @@ function sendDailyReminder() {
   });
 }
 
-// ADMIN BROADCAST
-bot.onText(/\/broadcast (.+)/, (msg, match) => {
-  if (msg.chat.id !== ADMIN_ID) return;
-
-  const text = match[1];
-
-  users.forEach((userId) => {
-    bot.sendMessage(userId, text).catch(() => {});
-  });
-
-  bot.sendMessage(ADMIN_ID, "✅ Broadcast sent");
-});
-
-// AUTO SYSTEM
+/* AUTO SYSTEM */
 setInterval(sendDailyPost, 24 * 60 * 60 * 1000);
+
 setInterval(sendDailyReminder, 24 * 60 * 60 * 1000);
 
+// Run once
 sendDailyPost();
 sendDailyReminder();
 
