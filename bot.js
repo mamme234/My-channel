@@ -37,26 +37,25 @@ bot.onText(/\/start/, async (msg) => {
 ⚡ Open the app every day to grow faster
 `;
 
-  bot.sendMessage(chatId, text, {
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: "🚀 Start Earning",
-            web_app: {
-              url: MINI_APP
-            }
+  bot.sendMessage(chatId, message, {
+  reply_markup: {
+    inline_keyboard: [
+      [
+        {
+          text: "📢 Join Channel",
+          url: "https://t.me/gangs234"
+        }
+      ],
+      [
+        {
+          text: "🚀 Start Earning",
+          web_app: {
+            url: "https://myapp1-khaki.vercel.app/"
           }
-        ],
-        [
-          {
-            text: "📢 Join Channel",
-            url: "https://t.me/gangs234"
-          }
-        ]
+        }
       ]
-    }
-  });
+    ]
+  }
 });
 
 // DAILY CHANNEL POST
