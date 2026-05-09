@@ -10,7 +10,7 @@ const bot = new TelegramBot(token, {
 const CHANNEL = "@gangs234";
 const BOT_USERNAME = "Studybuddy_2025Bot";
 const MINI_APP = "https://myapp1-khaki.vercel.app/";
-
+const GROUP_ID = "-1001234567890";
 const USERS_FILE = "users.json";
 
 let users = [];
@@ -73,18 +73,34 @@ function sendDailyPost() {
 ⏳ Open app before today ends.
 `;
 
-  bot.sendMessage(CHANNEL, text, {
+  function sendDailyPost() {
+  const text = `
+🚨 DAILY BONUS ALERT 🚨
+
+💰 Your reward is waiting!
+⏳ Open now before today ends.
+
+🔥 Stay active daily.
+`;
+
+  const options = {
     reply_markup: {
       inline_keyboard: [
         [
           {
-            text: "💰 Earn My $",
-            url: `https://t.me/${BOT_USERNAME}/app`
+            text: "🚀 Start Earning",
+            url: "https://t.me/Studybuddy_2025Bot/app"
           }
         ]
       ]
     }
-  });
+  };
+
+  // POST TO CHANNEL
+  bot.sendMessage(CHANNEL, text, options);
+
+  // POST TO GROUP
+  bot.sendMessage(GROUP_ID, text, options);
 }
 
 /* DAILY USER REMINDER */
