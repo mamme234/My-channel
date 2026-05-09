@@ -10,7 +10,7 @@ const bot = new TelegramBot(token, {
 const CHANNEL = "@gangs234";
 const BOT_USERNAME = "Studybuddy_2025Bot";
 const MINI_APP = "https://myapp1-khaki.vercel.app/";
-const GROUP_ID = "-1001234567890";
+const GROUP_ID = "--1003984859530";
 const USERS_FILE = "users.json";
 
 let users = [];
