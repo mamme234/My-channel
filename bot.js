@@ -1,146 +1,245 @@
 const TelegramBot = require("node-telegram-bot-api");
+const express = require("express");
 const fs = require("fs");
 
+const app = express();
+app.use(express.json());
+
+/* =========================
+   BOT TOKEN
+========================= */
 const token = "8344006616:AAFClZSZWBsPoT4rbf6Y0DafuqPX6lGVfoY";
 
 const bot = new TelegramBot(token, {
   polling: true
 });
 
+/* =========================
+   INFO
+========================= */
 const CHANNEL = "@gangs234";
-
-// PUT YOUR GROUP ID HERE
 const GROUP_ID = "-1003984859530";
-
-bot.sendMessage(GROUP_ID, "🔥 Daily rewards are ready!");
 
 const BOT_USERNAME = "Studybuddy_2025Bot";
 
-const MINI_APP = "https://myapp1-khaki.vercel.app/";
+const MINI_APP =
+  "https://t.me/Studybuddy_2025Bot?startapp=main";
 
+/* =========================
+   USERS DATABASE
+========================= */
 const USERS_FILE = "users.json";
 
 let users = [];
 
-// LOAD USERS
 if (fs.existsSync(USERS_FILE)) {
   users = JSON.parse(fs.readFileSync(USERS_FILE));
 }
 
-// SAVE USERS
 function saveUsers() {
   fs.writeFileSync(USERS_FILE, JSON.stringify(users));
 }
 
-/* START COMMAND */
+/* =========================
+   SEND EVERYWHERE
+========================= */
+function sendEverywhere(text) {
+
+  // channel
+  bot.sendMessage(CHANNEL, text, {
+    parse_mode: "Markdown",
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: "🚀 Open App",
+            url: MINI_APP
+          }
+        ]
+      ]
+    }
+  }).catch(console.log);
+
+  // group
+  bot.sendMessage(GROUP_ID, text, {
+    parse_mode: "Markdown",
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: "🚀 Open App",
+            url: MINI_APP
+          }
+        ]
+      ]
+    }
+  }).catch(console.log);
+}
+
+/* =========================
+   START COMMAND
+========================= */
 bot.onText(/\/start/, (msg) => {
+
   const chatId = msg.chat.id;
 
-  // SAVE USER
+  // save user
   if (!users.includes(chatId)) {
     users.push(chatId);
     saveUsers();
   }
 
-  const text = `
-🔥 WELCOME TO STUDYBUDDY
+  bot.sendMessage(chatId,
+`🔥 *WELCOME TO CRYPTO TAP PRO* 🔥
 
-💰 Earn rewards daily
-🚀 Open app and stay active
-`;
+💰 Tap coins daily
+🚀 Earn rewards
+🎁 Watch ads for bonus coins
 
-  bot.sendMessage(chatId, text, {
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: "🚀 Start Earning",
-            web_app: {
-              url: MINI_APP
-            }
+⚡ Stay active every day!`,
+{
+  parse_mode: "Markdown",
+  reply_markup: {
+    inline_keyboard: [
+      [
+        {
+          text: "🚀 Start Earning",
+          web_app: {
+            url: "https://myapp1-khaki.vercel.app/"
           }
-        ],
-        [
-          {
-            text: "📢 Join Channel",
-            url: "https://t.me/gangs234"
-          }
-        ]
+        }
+      ],
+      [
+        {
+          text: "📢 Join Channel",
+          url: "https://t.me/gangs234"
+        }
       ]
-    }
-  });
+    ]
+  }
 });
 
-/* DAILY POST */
+});
+
+/* =========================
+   POST API FROM APP
+========================= */
+app.post("/post", async (req, res) => {
+
+  const text = req.body.text;
+
+  if (!text) {
+    return res.json({
+      ok: false
+    });
+  }
+
+  sendEverywhere(text);
+
+  res.json({
+    ok: true
+  });
+
+});
+
+/* =========================
+   DAILY POST
+========================= */
 function sendDailyPost() {
 
-  const text = `
-🚨 DAILY BONUS ALERT 🚨
+  sendEverywhere(
+`🔥 *DAILY BONUS ALERT* 🔥
 
-💰 Your reward is waiting!
-⏳ Open app before today ends.
+💰 Your rewards are waiting!
 
-🔥 Stay active daily.
-`;
+🚀 Open the app now
+🎁 Watch ads & earn more
+⚡ Active users earn daily
 
-  const options = {
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: "🚀 Start Earning",
-            url: `https://t.me/${BOT_USERNAME}/app`
-          }
-        ]
-      ]
-    }
-  };
+👇 Start now!`
+  );
 
-  // POST TO CHANNEL
-  bot.sendMessage(CHANNEL, text, options);
-
-  // POST TO GROUP
-  bot.sendMessage(GROUP_ID, text, options);
 }
 
-/* DAILY USER REMINDER */
-function sendDailyReminder() {
-
-  const text = `
-⚠️ DAILY BONUS READY
-
-🎁 Open the app now and claim reward.
-`;
+/* =========================
+   DAILY MESSAGE TO USERS
+========================= */
+function sendDailyToUsers() {
 
   users.forEach((userId) => {
 
-    bot.sendMessage(userId, text, {
-      reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: "🚀 Open App",
-              web_app: {
-                url: MINI_APP
-              }
-            }
-          ]
-        ]
-      }
-    }).catch(() => {});
+    bot.sendMessage(userId,
+`🚨 *DAILY REMINDER* 🚨
+
+💰 Your coins are waiting!
+
+🔥 Open the app now and claim rewards.`,
+{
+  parse_mode: "Markdown",
+  reply_markup: {
+    inline_keyboard: [
+      [
+        {
+          text: "🚀 Open App",
+          web_app: {
+            url: "https://myapp1-khaki.vercel.app/"
+          }
+        }
+      ]
+    ]
+  }
+}).catch(() => {});
 
   });
 
 }
 
-/* AUTO SYSTEM */
+/* =========================
+   BROADCAST
+========================= */
+const ADMIN_ID = 7154361039;
 
+bot.onText(/\/broadcast (.+)/, (msg, match) => {
+
+  if (msg.chat.id != ADMIN_ID) return;
+
+  const text = match[1];
+
+  users.forEach((userId) => {
+
+    bot.sendMessage(userId, text).catch(() => {});
+
+  });
+
+  bot.sendMessage(
+    ADMIN_ID,
+    "✅ Broadcast sent!"
+  );
+
+});
+
+/* =========================
+   AUTO SYSTEM
+========================= */
+
+// every 24h
 setInterval(sendDailyPost, 24 * 60 * 60 * 1000);
 
-setInterval(sendDailyReminder, 24 * 60 * 60 * 1000);
+// every 24h
+setInterval(sendDailyToUsers, 24 * 60 * 60 * 1000);
 
-// RUN ON START
+// run once on startup
 sendDailyPost();
-sendDailyReminder();
 
-console.log("🚀 StudyBuddy system running");
+/* =========================
+   EXPRESS SERVER
+========================= */
+app.get("/", (req, res) => {
+  res.send("StudyBuddy Bot Running");
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("🚀 StudyBuddy system running");
+});
