@@ -10,7 +10,7 @@ const bot = new TelegramBot(token, {
 const CHANNEL = "@gangs234";
 
 // PUT YOUR GROUP ID HERE
-const GROUP_ID = "--1003984859530";
+const GROUP_ID = "---1003984859530";
 
 const BOT_USERNAME = "Studybuddy_2025Bot";
 
