@@ -6,203 +6,170 @@ const app = express();
 app.use(express.json());
 
 /* =========================
-   ENV CONFIG (IMPORTANT)
+   ENV TOKEN
 ========================= */
 const token = process.env.BOT_TOKEN;
 
 if (!token) {
-  console.log("❌ BOT_TOKEN missing in environment variables");
+  console.log("Missing BOT_TOKEN");
   process.exit(1);
 }
 
-/* =========================
-   BOT (WEBHOOK SAFE OPTION)
-========================= */
-const bot = new TelegramBot(token, {
-  polling: true
-});
+const bot = new TelegramBot(token, { polling: true });
+
+const BOT_USERNAME = "Studybuddy_2025Bot";
 
 /* =========================
-   CONSTANTS
+   DATABASE
 ========================= */
-const CHANNEL = "@gangs234";
-const GROUP_ID = "-1003984859530";
+let users = {};
 
-const MINI_APP = "https://t.me/Studybuddy_2025Bot?startapp=main";
+/*
+Structure:
+{
+  "12345": {
+    refs: 0,
+    balance: 0,
+    referredBy: null
+  }
+}
+*/
 
-/* =========================
-   SAFE USERS STORAGE
-========================= */
-const USERS_FILE = "users.json";
-
-let users = new Set();
-
-// load safely
 try {
-  const data = fs.readFileSync(USERS_FILE, "utf8");
-  JSON.parse(data).forEach(id => users.add(id));
+  users = JSON.parse(fs.readFileSync("users.json", "utf8"));
 } catch (e) {
-  users = new Set();
+  users = {};
 }
 
-// safe save (debounced)
-let saveTimeout;
 function saveUsers() {
-  clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(() => {
-    fs.writeFileSync(
-      USERS_FILE,
-      JSON.stringify([...users], null, 2)
-    );
-  }, 1000);
+  fs.writeFileSync("users.json", JSON.stringify(users, null, 2));
 }
 
 /* =========================
-   BROADCAST ENGINE
+   REF LINK
 ========================= */
-function sendEverywhere(text) {
-  const options = {
-    parse_mode: "Markdown",
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "🚀 Open App", url: MINI_APP }]
-      ]
-    }
-  };
-
-  bot.sendMessage(CHANNEL, text, options).catch(() => {});
-  bot.sendMessage(GROUP_ID, text, options).catch(() => {});
+function getLink(id) {
+  return `https://t.me/${BOT_USERNAME}?start=ref${id}`;
 }
 
 /* =========================
-   START COMMAND
+   START + REF SYSTEM
 ========================= */
-bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
+bot.onText(/\/start(?: (.+))?/, (msg, match) => {
+  const id = msg.chat.id;
+  const param = match?.[1];
 
-  users.add(chatId);
-  saveUsers();
-
-  bot.sendMessage(
-    chatId,
-`🔥 *WELCOME TO STUDYBUDDY* 🔥
-
-💰 Earn rewards daily
-🚀 Open app & play
-🎁 Watch ads & get bonus
-
-Stay active!`,
-    {
-      parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: "🚀 Start",
-              web_app: { url: "https://myapp1-khaki.vercel.app/" }
-            }
-          ],
-          [
-            {
-              text: "📢 Channel",
-              url: "https://t.me/gangs234"
-            }
-          ]
-        ]
-      }
-    }
-  );
-});
-
-/* =========================
-   API POST
-========================= */
-app.post("/post", (req, res) => {
-  const text = req.body.text;
-
-  if (!text) {
-    return res.json({ ok: false, error: "No text" });
+  if (!users[id]) {
+    users[id] = {
+      refs: 0,
+      balance: 0,
+      referredBy: null
+    };
   }
 
-  sendEverywhere(text);
+  // referral handling
+  if (param && param.startsWith("ref")) {
+    const refId = param.replace("ref", "");
 
-  res.json({ ok: true });
-});
+    if (
+      refId !== String(id) &&
+      users[id].referredBy === null &&
+      users[refId]
+    ) {
+      users[id].referredBy = refId;
 
-/* =========================
-   DAILY SYSTEM (SAFE LOOP)
-========================= */
-function dailyPost() {
-  sendEverywhere(
-`🔥 *DAILY BONUS* 🔥
+      users[refId].refs += 1;
+      users[refId].balance += 10; // reward
 
-💰 Claim your rewards
-🚀 Open app now
-🎁 Earn more daily`
+      saveUsers();
+
+      bot.sendMessage(refId, "🎉 +10 coins from referral!");
+    }
+  }
+
+  saveUsers();
+
+  const u = users[id];
+
+  bot.sendMessage(
+    id,
+`🔥 *WELCOME TO STUDYBUDDY* 🔥
+
+💰 Balance: *${u.balance} coins*
+👥 Referrals: *${u.refs}*
+
+🔗 Your link:
+${getLink(id)}
+
+Invite friends & earn coins!`,
+    { parse_mode: "Markdown" }
   );
-}
-
-function dailyUsers() {
-  users.forEach((id) => {
-    bot.sendMessage(
-      id,
-`🚨 *DAILY REMINDER*
-
-💰 Your rewards are waiting
-🚀 Open app & claim now`,
-      {
-        parse_mode: "Markdown",
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: "🚀 Open App",
-                web_app: { url: "https://myapp1-khaki.vercel.app/" }
-              }
-            ]
-          ]
-        }
-      }
-    ).catch(() => {});
-  });
-}
-
-/* =========================
-   BROADCAST (ADMIN ONLY)
-========================= */
-const ADMIN_ID = 7154361039;
-
-bot.onText(/\/broadcast (.+)/, (msg, match) => {
-  if (msg.chat.id !== ADMIN_ID) return;
-
-  const text = match[1];
-
-  users.forEach(id => {
-    bot.sendMessage(id, text).catch(() => {});
-  });
-
-  bot.sendMessage(ADMIN_ID, "✅ Broadcast sent");
 });
 
 /* =========================
-   INTERVAL (OPTIMIZED)
+   BALANCE
 ========================= */
-setInterval(() => {
-  dailyPost();
-  dailyUsers();
-}, 24 * 60 * 60 * 1000);
+bot.onText(/\/balance/, (msg) => {
+  const id = msg.chat.id;
 
-dailyPost();
+  const balance = users[id]?.balance || 0;
+
+  bot.sendMessage(
+    id,
+`💰 *Your Balance*
+
+🪙 Coins: *${balance}*`,
+    { parse_mode: "Markdown" }
+  );
+});
+
+/* =========================
+   REF COUNT
+========================= */
+bot.onText(/\/refs/, (msg) => {
+  const id = msg.chat.id;
+
+  const refs = users[id]?.refs || 0;
+
+  bot.sendMessage(
+    id,
+`👥 *Your Referrals*
+
+📊 You invited: *${refs} users*`,
+    { parse_mode: "Markdown" }
+  );
+});
+
+/* =========================
+   TOP USERS
+========================= */
+bot.onText(/\/top/, (msg) => {
+  const top = Object.entries(users)
+    .map(([id, d]) => ({
+      id,
+      balance: d.balance || 0
+    }))
+    .sort((a, b) => b.balance - a.balance)
+    .slice(0, 5);
+
+  let text = "🏆 *Top Earners*\n\n";
+
+  top.forEach((u, i) => {
+    text += `${i + 1}. User ${u.id} — ${u.balance} coins\n`;
+  });
+
+  bot.sendMessage(msg.chat.id, text, { parse_mode: "Markdown" });
+});
 
 /* =========================
    EXPRESS SERVER
 ========================= */
 app.get("/", (req, res) => {
-  res.send("StudyBuddy Bot Running");
+  res.send("Bot running");
 });
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("🚀 Bot running on port", PORT);
+  console.log("Bot running on port", PORT);
 });
