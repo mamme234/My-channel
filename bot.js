@@ -1,26 +1,31 @@
 const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
 
-const token = "8344006616:AAFkf3s7tKQaqSYm1d-4d1yMbIOoKpQFB7Q";
+const token = "PUT_NEW_BOT_TOKEN_HERE";
 
 const bot = new TelegramBot(token, {
   polling: true
 });
 
 const CHANNEL = "@gangs234";
-const BOT_USERNAME = "Studybuddy_2025Bot";
-const MINI_APP = "https://myapp1-khaki.vercel.app/";
+
+// PUT YOUR GROUP ID HERE
 const GROUP_ID = "--1003984859530";
+
+const BOT_USERNAME = "Studybuddy_2025Bot";
+
+const MINI_APP = "https://myapp1-khaki.vercel.app/";
+
 const USERS_FILE = "users.json";
 
 let users = [];
 
-// Load users
+// LOAD USERS
 if (fs.existsSync(USERS_FILE)) {
   users = JSON.parse(fs.readFileSync(USERS_FILE));
 }
 
-// Save users
+// SAVE USERS
 function saveUsers() {
   fs.writeFileSync(USERS_FILE, JSON.stringify(users));
 }
@@ -29,7 +34,7 @@ function saveUsers() {
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
 
-  // Save user
+  // SAVE USER
   if (!users.includes(chatId)) {
     users.push(chatId);
     saveUsers();
@@ -64,21 +69,14 @@ bot.onText(/\/start/, (msg) => {
   });
 });
 
-/* DAILY CHANNEL POST */
+/* DAILY POST */
 function sendDailyPost() {
-  const text = `
-🚨 DAILY LOGIN ALERT
 
-💰 Your reward is waiting!
-⏳ Open app before today ends.
-`;
-
-  function sendDailyPost() {
   const text = `
 🚨 DAILY BONUS ALERT 🚨
 
 💰 Your reward is waiting!
-⏳ Open now before today ends.
+⏳ Open app before today ends.
 
 🔥 Stay active daily.
 `;
@@ -89,7 +87,7 @@ function sendDailyPost() {
         [
           {
             text: "🚀 Start Earning",
-            url: "https://t.me/Studybuddy_2025Bot/app"
+            url: `https://t.me/${BOT_USERNAME}/app`
           }
         ]
       ]
@@ -105,6 +103,7 @@ function sendDailyPost() {
 
 /* DAILY USER REMINDER */
 function sendDailyReminder() {
+
   const text = `
 ⚠️ DAILY BONUS READY
 
@@ -112,6 +111,7 @@ function sendDailyReminder() {
 `;
 
   users.forEach((userId) => {
+
     bot.sendMessage(userId, text, {
       reply_markup: {
         inline_keyboard: [
@@ -126,15 +126,18 @@ function sendDailyReminder() {
         ]
       }
     }).catch(() => {});
+
   });
+
 }
 
 /* AUTO SYSTEM */
+
 setInterval(sendDailyPost, 24 * 60 * 60 * 1000);
 
 setInterval(sendDailyReminder, 24 * 60 * 60 * 1000);
 
-// Run once
+// RUN ON START
 sendDailyPost();
 sendDailyReminder();
 
