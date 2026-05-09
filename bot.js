@@ -1,71 +1,57 @@
 const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
 
-const token = "8344006616:AAFtsVrXi8xRAtbyWHeMxsXk_X3ntE3xRMk";
+const token = "YOUR_NEW_BOT_TOKEN";
 const bot = new TelegramBot(token, { polling: true });
 
+const CHANNEL = "@gangs234";
 const BOT_USERNAME = "Studybuddy_2025Bot";
-const MINI_APP = `https://t.me/${BOT_USERNAME}/app`;
-
+const MINI_APP = "https://myapp1-khaki.vercel.app/";
+const USERS_FILE = "users.json";
 const ADMIN_ID = 7154361039;
 
-const USERS_FILE = "users.json";
-let users = {}; 
-// format:
-// { userId: { balance: 0, ref: null, lastClaim: 0 } }
+let users = [];
 
 if (fs.existsSync(USERS_FILE)) {
   users = JSON.parse(fs.readFileSync(USERS_FILE));
 }
 
 function saveUsers() {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users));
 }
 
-function getUser(id) {
-  if (!users[id]) {
-    users[id] = { balance: 0, ref: null, lastClaim: 0 };
-  }
-  return users[id];
-}
+// START
+bot.onText(/\/start/, async (msg) => {
+  const chatId = msg.chat.id;
 
-function getDeepLink(ref = "") {
-  return ref ? `${MINI_APP}?startapp=${ref}` : MINI_APP;
-}
-
-/* =========================
-   START + REF SYSTEM
-========================= */
-bot.onText(/\/start(.*)/, (msg, match) => {
-  const id = msg.chat.id;
-  const ref = match[1].trim();
-
-  const user = getUser(id);
-
-  // referral tracking
-  if (ref && ref !== id.toString()) {
-    user.ref = ref;
-
-    // reward referrer
-    const refUser = getUser(ref);
-    refUser.balance += 5;
+  if (!users.includes(chatId)) {
+    users.push(chatId);
+    saveUsers();
   }
 
-  saveUsers();
+  const text = `
+🔥 WELCOME TO STUDYBUDDY
 
-  bot.sendMessage(id, `
-🔥 Welcome to StudyBuddy
+💰 Earn rewards daily
+🎁 Complete tasks and stay active
+⚡ Open the app every day to grow faster
+`;
 
-💰 Earn daily rewards
-⚡ Tap & grow your balance
-📊 Invite friends to earn more
-`, {
+  bot.sendMessage(chatId, text, {
     reply_markup: {
       inline_keyboard: [
         [
           {
-            text: "⚡ Start Earning",
-            url: getDeepLink("welcome")
+            text: "🚀 Start Earning",
+            web_app: {
+              url: MINI_APP
+            }
+          }
+        ],
+        [
+          {
+            text: "📢 Join Channel",
+            url: "https://t.me/gangs234"
           }
         ]
       ]
@@ -73,43 +59,52 @@ bot.onText(/\/start(.*)/, (msg, match) => {
   });
 });
 
-/* =========================
-   DAILY REWARD SYSTEM
-========================= */
-function claimDaily(userId) {
-  const user = getUser(userId);
-  const now = Date.now();
+// DAILY CHANNEL POST
+function sendDailyPost() {
+  const text = `
+🚨 DAILY LOGIN ALERT 🚨
 
-  const DAY = 24 * 60 * 60 * 1000;
+💎 Your daily reward is waiting!
+⏰ Open now before today ends.
 
-  if (now - user.lastClaim < DAY) {
-    return false;
-  }
+🔥 Active users earn more every day.
+`;
 
-  user.balance += 10;
-  user.lastClaim = now;
-  saveUsers();
-
-  return true;
+  bot.sendMessage(CHANNEL, text, {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: "💰 Earn My $",
+            url: `https://t.me/${BOT_USERNAME}/app`
+          }
+        ]
+      ]
+    }
+  });
 }
 
-/* =========================
-   DAILY MESSAGE
-========================= */
-function sendDailyToUsers() {
-  Object.keys(users).forEach(id => {
-    bot.sendMessage(id, `
-🚨 Daily Reward Available
+// DAILY MESSAGE TO USERS
+function sendDailyReminder() {
+  const text = `
+⚠️ DAILY BONUS READY ⚠️
 
-💰 Tap to claim your reward
-⚡ Stay active for bonuses
-`, {
+🎁 Your reward is available now.
+🚀 Open the app and claim it.
+
+⏳ Missing today = losing rewards.
+`;
+
+  users.forEach((userId) => {
+    bot.sendMessage(userId, text, {
       reply_markup: {
         inline_keyboard: [
           [
             {
-              text: "💰 Claim Reward",
-              callback_data: "claim"
+              text: "🚀 Open App",
+              web_app: {
+                url: MINI_APP
+              }
             }
           ]
         ]
@@ -118,92 +113,24 @@ function sendDailyToUsers() {
   });
 }
 
-/* =========================
-   CLAIM BUTTON
-========================= */
-bot.on("callback_query", (q) => {
-  const id = q.from.id;
+// ADMIN BROADCAST
+bot.onText(/\/broadcast (.+)/, (msg, match) => {
+  if (msg.chat.id !== ADMIN_ID) return;
 
-  if (q.data === "claim") {
-    const ok = claimDaily(id);
+  const text = match[1];
 
-    if (ok) {
-      bot.answerCallbackQuery(q.id, { text: "✅ Reward added!" });
-      bot.sendMessage(id, "💰 You received +10 coins!");
-    } else {
-      bot.answerCallbackQuery(q.id, { text: "⏳ Already claimed today" });
-    }
-  }
+  users.forEach((userId) => {
+    bot.sendMessage(userId, text).catch(() => {});
+  });
+
+  bot.sendMessage(ADMIN_ID, "✅ Broadcast sent");
 });
 
-/* =========================
-   BALANCE CHECK
-========================= */
-bot.onText(/\/balance/, (msg) => {
-  const user = getUser(msg.chat.id);
+// AUTO SYSTEM
+setInterval(sendDailyPost, 24 * 60 * 60 * 1000);
+setInterval(sendDailyReminder, 24 * 60 * 60 * 1000);
 
-  bot.sendMessage(msg.chat.id, `
-💰 Your Balance: ${user.balance} coins
-👥 Referral: ${user.ref || "none"}
-`);
-});
+sendDailyPost();
+sendDailyReminder();
 
-/* =========================
-   WITHDRAW SYSTEM
-========================= */
-bot.onText(/\/withdraw (.+)/, (msg, match) => {
-  const id = msg.chat.id;
-  const amount = parseInt(match[1]);
-
-  const user = getUser(id);
-
-  if (user.balance < amount) {
-    return bot.sendMessage(id, "❌ Not enough balance");
-  }
-
-  user.balance -= amount;
-  saveUsers();
-
-  bot.sendMessage(ADMIN_ID, `
-💸 Withdrawal Request
-
-User: ${id}
-Amount: ${amount}
-`);
-
-  bot.sendMessage(id, "⏳ Withdrawal sent for approval");
-});
-
-/* =========================
-   ADMIN APPROVAL
-========================= */
-bot.onText(/\/approve (.+) (.+)/, (msg, match) => {
-  if (msg.chat.id != ADMIN_ID) return;
-
-  const userId = match[1];
-  const amount = match[2];
-
-  bot.sendMessage(userId, `✅ Withdrawal of ${amount} approved!`);
-});
-
-/* =========================
-   REF LINK GENERATOR
-========================= */
-bot.onText(/\/ref/, (msg) => {
-  const id = msg.chat.id;
-
-  bot.sendMessage(id, `
-🔗 Your Referral Link:
-
-https://t.me/${BOT_USERNAME}?start=${id}
-
-💰 Earn 5 coins per invite
-`);
-});
-
-/* =========================
-   DAILY SCHEDULER
-========================= */
-setInterval(sendDailyToUsers, 24 * 60 * 60 * 1000);
-
-console.log("🚀 StudyBuddy upgraded bot running");
+console.log("🚀 StudyBuddy system running");
