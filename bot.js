@@ -6,230 +6,193 @@ const app = express();
 app.use(express.json());
 
 /* =========================
-   BOT TOKEN
+   ENV CONFIG (IMPORTANT)
 ========================= */
-const token = "8344006616:AAFClZSZWBsPoT4rbf6Y0DafuqPX6lGVfoY";
+const token = process.env.BOT_TOKEN;
 
+if (!token) {
+  console.log("❌ BOT_TOKEN missing in environment variables");
+  process.exit(1);
+}
+
+/* =========================
+   BOT (WEBHOOK SAFE OPTION)
+========================= */
 const bot = new TelegramBot(token, {
   polling: true
 });
 
 /* =========================
-   INFO
+   CONSTANTS
 ========================= */
 const CHANNEL = "@gangs234";
 const GROUP_ID = "-1003984859530";
 
-const BOT_USERNAME = "Studybuddy_2025Bot";
-
-const MINI_APP =
-  "https://t.me/Studybuddy_2025Bot?startapp=main";
+const MINI_APP = "https://t.me/Studybuddy_2025Bot?startapp=main";
 
 /* =========================
-   USERS DATABASE
+   SAFE USERS STORAGE
 ========================= */
 const USERS_FILE = "users.json";
 
-let users = [];
+let users = new Set();
 
-if (fs.existsSync(USERS_FILE)) {
-  users = JSON.parse(fs.readFileSync(USERS_FILE));
+// load safely
+try {
+  const data = fs.readFileSync(USERS_FILE, "utf8");
+  JSON.parse(data).forEach(id => users.add(id));
+} catch (e) {
+  users = new Set();
 }
 
+// safe save (debounced)
+let saveTimeout;
 function saveUsers() {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users));
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    fs.writeFileSync(
+      USERS_FILE,
+      JSON.stringify([...users], null, 2)
+    );
+  }, 1000);
 }
 
 /* =========================
-   SEND EVERYWHERE
+   BROADCAST ENGINE
 ========================= */
 function sendEverywhere(text) {
-
-  // channel
-  bot.sendMessage(CHANNEL, text, {
+  const options = {
     parse_mode: "Markdown",
     reply_markup: {
       inline_keyboard: [
-        [
-          {
-            text: "🚀 Open App",
-            url: MINI_APP
-          }
-        ]
+        [{ text: "🚀 Open App", url: MINI_APP }]
       ]
     }
-  }).catch(console.log);
+  };
 
-  // group
-  bot.sendMessage(GROUP_ID, text, {
-    parse_mode: "Markdown",
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: "🚀 Open App",
-            url: MINI_APP
-          }
-        ]
-      ]
-    }
-  }).catch(console.log);
+  bot.sendMessage(CHANNEL, text, options).catch(() => {});
+  bot.sendMessage(GROUP_ID, text, options).catch(() => {});
 }
 
 /* =========================
    START COMMAND
 ========================= */
 bot.onText(/\/start/, (msg) => {
-
   const chatId = msg.chat.id;
 
-  // save user
-  if (!users.includes(chatId)) {
-    users.push(chatId);
-    saveUsers();
-  }
+  users.add(chatId);
+  saveUsers();
 
-  bot.sendMessage(chatId,
-`🔥 *WELCOME TO CRYPTO TAP PRO* 🔥
+  bot.sendMessage(
+    chatId,
+`🔥 *WELCOME TO STUDYBUDDY* 🔥
 
-💰 Tap coins daily
-🚀 Earn rewards
-🎁 Watch ads for bonus coins
+💰 Earn rewards daily
+🚀 Open app & play
+🎁 Watch ads & get bonus
 
-⚡ Stay active every day!`,
-{
-  parse_mode: "Markdown",
-  reply_markup: {
-    inline_keyboard: [
-      [
-        {
-          text: "🚀 Start Earning",
-          web_app: {
-            url: "https://myapp1-khaki.vercel.app/"
-          }
-        }
-      ],
-      [
-        {
-          text: "📢 Join Channel",
-          url: "https://t.me/gangs234"
-        }
-      ]
-    ]
-  }
-});
-
+Stay active!`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "🚀 Start",
+              web_app: { url: "https://myapp1-khaki.vercel.app/" }
+            }
+          ],
+          [
+            {
+              text: "📢 Channel",
+              url: "https://t.me/gangs234"
+            }
+          ]
+        ]
+      }
+    }
+  );
 });
 
 /* =========================
-   POST API FROM APP
+   API POST
 ========================= */
-app.post("/post", async (req, res) => {
-
+app.post("/post", (req, res) => {
   const text = req.body.text;
 
   if (!text) {
-    return res.json({
-      ok: false
-    });
+    return res.json({ ok: false, error: "No text" });
   }
 
   sendEverywhere(text);
 
-  res.json({
-    ok: true
-  });
-
+  res.json({ ok: true });
 });
 
 /* =========================
-   DAILY POST
+   DAILY SYSTEM (SAFE LOOP)
 ========================= */
-function sendDailyPost() {
-
+function dailyPost() {
   sendEverywhere(
-`🔥 *DAILY BONUS ALERT* 🔥
+`🔥 *DAILY BONUS* 🔥
 
-💰 Your rewards are waiting!
-
-🚀 Open the app now
-🎁 Watch ads & earn more
-⚡ Active users earn daily
-
-👇 Start now!`
+💰 Claim your rewards
+🚀 Open app now
+🎁 Earn more daily`
   );
-
 }
 
-/* =========================
-   DAILY MESSAGE TO USERS
-========================= */
-function sendDailyToUsers() {
+function dailyUsers() {
+  users.forEach((id) => {
+    bot.sendMessage(
+      id,
+`🚨 *DAILY REMINDER*
 
-  users.forEach((userId) => {
-
-    bot.sendMessage(userId,
-`🚨 *DAILY REMINDER* 🚨
-
-💰 Your coins are waiting!
-
-🔥 Open the app now and claim rewards.`,
-{
-  parse_mode: "Markdown",
-  reply_markup: {
-    inline_keyboard: [
-      [
-        {
-          text: "🚀 Open App",
-          web_app: {
-            url: "https://myapp1-khaki.vercel.app/"
-          }
+💰 Your rewards are waiting
+🚀 Open app & claim now`,
+      {
+        parse_mode: "Markdown",
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "🚀 Open App",
+                web_app: { url: "https://myapp1-khaki.vercel.app/" }
+              }
+            ]
+          ]
         }
-      ]
-    ]
-  }
-}).catch(() => {});
-
+      }
+    ).catch(() => {});
   });
-
 }
 
 /* =========================
-   BROADCAST
+   BROADCAST (ADMIN ONLY)
 ========================= */
 const ADMIN_ID = 7154361039;
 
 bot.onText(/\/broadcast (.+)/, (msg, match) => {
-
-  if (msg.chat.id != ADMIN_ID) return;
+  if (msg.chat.id !== ADMIN_ID) return;
 
   const text = match[1];
 
-  users.forEach((userId) => {
-
-    bot.sendMessage(userId, text).catch(() => {});
-
+  users.forEach(id => {
+    bot.sendMessage(id, text).catch(() => {});
   });
 
-  bot.sendMessage(
-    ADMIN_ID,
-    "✅ Broadcast sent!"
-  );
-
+  bot.sendMessage(ADMIN_ID, "✅ Broadcast sent");
 });
 
 /* =========================
-   AUTO SYSTEM
+   INTERVAL (OPTIMIZED)
 ========================= */
+setInterval(() => {
+  dailyPost();
+  dailyUsers();
+}, 24 * 60 * 60 * 1000);
 
-// every 24h
-setInterval(sendDailyPost, 24 * 60 * 60 * 1000);
-
-// every 24h
-setInterval(sendDailyToUsers, 24 * 60 * 60 * 1000);
-
-// run once on startup
-sendDailyPost();
+dailyPost();
 
 /* =========================
    EXPRESS SERVER
@@ -241,5 +204,5 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("🚀 StudyBuddy system running");
+  console.log("🚀 Bot running on port", PORT);
 });
