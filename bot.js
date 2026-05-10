@@ -256,16 +256,15 @@ ${link}
 {
   parse_mode: "Markdown",
   reply_markup: {
-    inline_keyboard: [
-
-      [
-        {
-          text: "🚀 Start App",
-          web_app: {
-            url: MINI_APP
-          }
-        }
-      ],
+  inline_keyboard: [
+    [
+      {
+        text: "Start Bot",
+        callback_data: "start_bot"
+      }
+    ]
+  ]
+      }
 
       [
         {
@@ -301,14 +300,11 @@ ${link}
 
 /* ================= CALLBACKS ================= */
 
-bot.on(
-"callback_query",
-async (query) => {
-
-  const chatId =
-    String(
-      query.message.chat.id
-    );
+bot.on("callback_query", (query) => {
+  if (query.data === "start_bot") {
+    bot.sendMessage(query.message.chat.id, "Bot started ✅");
+  }
+});
 
   const user =
     await User.findOne({
