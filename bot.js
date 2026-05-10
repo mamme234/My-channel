@@ -35,6 +35,8 @@ const BOT_USERNAME = "Studybuddy_2025Bot";
 const CHANNEL = "@gangs234";
 const GROUP_ID = "-1003984859530";
 
+const ADMIN_ID = 7154361039;
+
 const MINI_APP =
   "https://myapp1-khaki.vercel.app/";
 
@@ -99,14 +101,14 @@ function sendEverywhere(text) {
     }
   };
 
-  // channel
+  // send to channel
   bot.sendMessage(
     CHANNEL,
     text,
     options
   ).catch(console.log);
 
-  // group
+  // send to group
   bot.sendMessage(
     GROUP_ID,
     text,
@@ -140,8 +142,6 @@ bot.onText(/\/start(?: (.+))?/, (msg, match) => {
     const refId =
       param.replace("ref", "");
 
-    // anti self-referral
-    // anti double reward
     if (
       refId !== String(chatId) &&
       users[chatId].referredBy === null &&
@@ -351,8 +351,6 @@ bot.onText(/\/top/, (msg) => {
 /* =========================
    BROADCAST
 ========================= */
-const ADMIN_ID = 7154361039;
-
 bot.onText(
 /\/broadcast (.+)/,
 (msg, match) => {
@@ -376,6 +374,33 @@ bot.onText(
   bot.sendMessage(
     ADMIN_ID,
     "✅ Broadcast sent"
+  );
+
+});
+
+/* =========================
+   POST COMMAND
+========================= */
+bot.onText(
+/\/post (.+)/,
+(msg, match) => {
+
+  // admin only
+  if (
+    msg.chat.id !== ADMIN_ID
+  ) return;
+
+  const text = match[1];
+
+  sendEverywhere(
+`📢 *NEW POST*
+
+${text}`
+  );
+
+  bot.sendMessage(
+    ADMIN_ID,
+    "✅ Post sent successfully!"
   );
 
 });
@@ -412,7 +437,7 @@ setInterval(
 );
 
 /* =========================
-   POST API
+   API POST
 ========================= */
 app.post(
 "/post",
