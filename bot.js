@@ -78,7 +78,7 @@ bot.onText(/\/ref/, async (msg) => {
   let user = await User.findOne({ userId: id });
   if (!user) user = await User.create({ userId: id });
 
-  const link = `https://t.me/YourBot?start=ref${id}`;
+  const link = `https://t.me/@Studybuddy_2025Bot?start=ref${id}`;
 
   bot.sendMessage(id,
 `👥 REF SYSTEM
