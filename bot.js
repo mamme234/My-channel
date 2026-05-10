@@ -1,483 +1,199 @@
 const TelegramBot = require("node-telegram-bot-api");
 const express = require("express");
-const fs = require("fs");
+const mongoose = require("mongoose");
 
 const app = express();
 app.use(express.json());
 
-/* =========================
-   BOT TOKEN
-========================= */
 const token = process.env.BOT_TOKEN;
+const MONGO_URL = process.env.MONGO_URL;
 
-if (!token) {
-  console.log("❌ BOT_TOKEN missing");
+if (!token || !MONGO_URL) {
+  console.log("❌ Missing env variables");
   process.exit(1);
 }
 
-/* =========================
-   BOT START
-========================= */
-const bot = new TelegramBot(token);
+/* ================= DB ================= */
+mongoose.connect(MONGO_URL)
+  .then(() => console.log("✅ DB Connected"));
 
-bot.deleteWebHook()
-.then(() => {
-  bot.startPolling();
-  console.log("✅ Bot polling started");
-})
-.catch(console.log);
+const User = mongoose.model("User", {
+  userId: String,
+  balance: { type: Number, default: 0 },
+  refs: { type: Number, default: 0 },
+  referredBy: String,
+  joinTime: { type: Number, default: Date.now }
+});
 
-/* =========================
-   INFO
-========================= */
+/* ================= BOT ================= */
+const bot = new TelegramBot(token, { polling: true });
+
 const BOT_USERNAME = "Studybuddy_2025Bot";
-
-const CHANNEL = "@gangs234";
-const GROUP_ID = "-1003984859530";
-
 const ADMIN_ID = 7154361039;
+const CHANNEL = "@gangs234";
+const MINI_APP = "https://myapp1-khaki.vercel.app/";
 
-const MINI_APP =
-  "https://myapp1-khaki.vercel.app/";
+/* ================= HELPERS ================= */
+function getLink(id) {
+  return `https://t.me/${BOT_USERNAME}?start=ref${id}`;
+}
 
-/* =========================
-   USERS DATABASE
-========================= */
-const USERS_FILE = "users.json";
-
-let users = {};
-
-/*
-Structure:
-{
-  "12345": {
-    refs: 0,
-    balance: 0,
-    referredBy: null
+/* ================= CHANNEL CHECK ================= */
+async function isMember(userId) {
+  try {
+    const res = await bot.getChatMember(CHANNEL, userId);
+    return ["member", "creator", "administrator"].includes(res.status);
+  } catch {
+    return false;
   }
 }
-*/
 
-// load users safely
-try {
-  users = JSON.parse(
-    fs.readFileSync(USERS_FILE, "utf8")
-  );
-} catch (e) {
-  users = {};
-}
+/* ================= START ================= */
+bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
 
-// save users
-function saveUsers() {
-  fs.writeFileSync(
-    USERS_FILE,
-    JSON.stringify(users, null, 2)
-  );
-}
-
-/* =========================
-   REFERRAL LINK
-========================= */
-function getReferralLink(userId) {
-  return `https://t.me/${BOT_USERNAME}?start=ref${userId}`;
-}
-
-/* =========================
-   SEND EVERYWHERE
-========================= */
-function sendEverywhere(text) {
-
-  const options = {
-    parse_mode: "Markdown",
-    reply_markup: {
-      inline_keyboard: [
-        [
-          {
-            text: "🚀 Open App",
-            url: MINI_APP
-          }
-        ]
-      ]
-    }
-  };
-
-  // send to channel
-  bot.sendMessage(
-    CHANNEL,
-    text,
-    options
-  ).catch(console.log);
-
-  // send to group
-  bot.sendMessage(
-    GROUP_ID,
-    text,
-    options
-  ).catch(console.log);
-}
-
-/* =========================
-   START + REFERRAL SYSTEM
-========================= */
-bot.onText(/\/start(?: (.+))?/, (msg, match) => {
-
-  const chatId = msg.chat.id;
+  const chatId = String(msg.chat.id);
   const param = match?.[1];
 
-  // create user
-  if (!users[chatId]) {
-    users[chatId] = {
-      refs: 0,
-      balance: 0,
-      referredBy: null
-    };
+  if (!(await isMember(chatId))) {
+    return bot.sendMessage(chatId,
+      "⚠️ Join channel first",
+      {
+        reply_markup: {
+          inline_keyboard: [[
+            { text: "Join Channel", url: "https://t.me/gangs234" }
+          ]]
+        }
+      }
+    );
   }
 
-  // referral logic
-  if (
-    param &&
-    param.startsWith("ref")
-  ) {
+  let user = await User.findOne({ userId: chatId });
 
-    const refId =
-      param.replace("ref", "");
+  if (!user) {
+    user = await User.create({ userId: chatId });
+  }
 
-    if (
-      refId !== String(chatId) &&
-      users[chatId].referredBy === null &&
-      users[refId]
-    ) {
+  /* ================= REFERRAL ================= */
+  if (param?.startsWith("ref")) {
 
-      users[chatId].referredBy =
-        refId;
+    const refId = param.replace("ref", "");
 
-      users[refId].refs += 1;
+    if (refId !== chatId && !user.referredBy) {
 
-      users[refId].balance += 10;
+      const refUser = await User.findOne({ userId: refId });
 
-      saveUsers();
+      if (refUser) {
 
-      bot.sendMessage(
-        refId,
-        "🎉 You earned +10 coins from referral!"
-      ).catch(() => {});
+        user.referredBy = refId;
+
+        refUser.refs += 1;
+        refUser.balance += 10;
+
+        await user.save();
+        await refUser.save();
+
+        bot.sendMessage(refId, "🎉 +10 coins from referral!");
+      }
     }
   }
 
-  saveUsers();
+  const link = getLink(chatId);
 
-  const refLink =
-    getReferralLink(chatId);
+  bot.sendMessage(chatId,
+`🔥 WELCOME
 
-  bot.sendMessage(
-    chatId,
-`🔥 *WELCOME TO STUDYBUDDY* 🔥
+💰 Balance: ${user.balance}
+👥 Referrals: ${user.refs}
 
-💰 Balance: *${users[chatId].balance} coins*
-👥 Referrals: *${users[chatId].refs}*
-
-🔗 *Your referral link:*
-${refLink}
-
-🚀 Invite friends and earn more coins!`,
+🔗 ${link}`,
 {
-  parse_mode: "Markdown",
   reply_markup: {
     inline_keyboard: [
-      [
-        {
-          text: "🚀 Start Earning",
-          web_app: {
-            url: MINI_APP
-          }
-        }
-      ],
-      [
-        {
-          text: "👥 My Referrals",
-          callback_data: "refs"
-        }
-      ],
-      [
-        {
-          text: "💰 Balance",
-          callback_data: "balance"
-        }
-      ],
-      [
-        {
-          text: "📢 Join Channel",
-          url: "https://t.me/gangs234"
-        }
-      ]
+      [{ text: "Open App", web_app: { url: MINI_APP } }],
+      [{ text: "Referral Link", url: link }],
+      [{ text: "Balance", callback_data: "balance" }]
     ]
   }
 });
-
 });
 
-/* =========================
-   BUTTON HANDLER
-========================= */
-bot.on("callback_query", (query) => {
+/* ================= CALLBACK ================= */
+bot.on("callback_query", async (q) => {
 
-  const chatId =
-    query.message.chat.id;
+  const id = String(q.message.chat.id);
+  const user = await User.findOne({ userId: id });
 
-  // refs
-  if (query.data === "refs") {
-
-    const count =
-      users[chatId]?.refs || 0;
-
-    bot.sendMessage(
-      chatId,
-`👥 *Referral Stats*
-
-📊 Invited Users: *${count}*`,
-      {
-        parse_mode: "Markdown"
-      }
-    );
+  if (q.data === "balance") {
+    bot.sendMessage(id, `💰 Balance: ${user?.balance || 0}`);
   }
 
-  // balance
-  if (
-    query.data === "balance"
-  ) {
+  bot.answerCallbackQuery(q.id);
+});
 
-    const balance =
-      users[chatId]?.balance || 0;
+/* ================= WITHDRAW ================= */
+bot.onText(/\/withdraw (.+)/, async (msg, match) => {
 
-    bot.sendMessage(
-      chatId,
-`💰 *Your Balance*
+  const id = String(msg.chat.id);
+  const amount = Number(match[1]);
 
-🪙 Coins: *${balance}*`,
-      {
-        parse_mode: "Markdown"
-      }
-    );
+  const user = await User.findOne({ userId: id });
+
+  if (!user || user.balance < amount) {
+    return bot.sendMessage(id, "❌ Not enough balance");
   }
 
-  bot.answerCallbackQuery(
-    query.id
-  ).catch(() => {});
+  user.balance -= amount;
+  await user.save();
+
+  bot.sendMessage(ADMIN_ID,
+`💸 Withdraw request
+User: ${id}
+Amount: ${amount}`);
+
+  bot.sendMessage(id, "⏳ Request sent");
 });
 
-/* =========================
-   COMMANDS
-========================= */
+/* ================= LEADERBOARD ================= */
+bot.onText(/\/top/, async (msg) => {
 
-// balance
-bot.onText(/\/balance/, (msg) => {
+  const top = await User.find()
+    .sort({ balance: -1 })
+    .limit(10);
 
-  const chatId = msg.chat.id;
+  let text = "🏆 TOP USERS\n\n";
 
-  const balance =
-    users[chatId]?.balance || 0;
-
-  bot.sendMessage(
-    chatId,
-`💰 *Your Balance*
-
-🪙 Coins: *${balance}*`,
-{
-  parse_mode: "Markdown"
-});
-
-});
-
-// refs
-bot.onText(/\/refs/, (msg) => {
-
-  const chatId = msg.chat.id;
-
-  const refs =
-    users[chatId]?.refs || 0;
-
-  bot.sendMessage(
-    chatId,
-`👥 *Your Referrals*
-
-📊 Total invited users: *${refs}*`,
-{
-  parse_mode: "Markdown"
-});
-
-});
-
-// leaderboard
-bot.onText(/\/top/, (msg) => {
-
-  const topUsers =
-    Object.entries(users)
-    .map(([id, data]) => ({
-      id,
-      balance:
-        data.balance || 0
-    }))
-    .sort(
-      (a, b) =>
-        b.balance - a.balance
-    )
-    .slice(0, 10);
-
-  let text =
-`🏆 *Top Earners*
-
-`;
-
-  topUsers.forEach((u, i) => {
-
-    text +=
-`${i + 1}. User ${u.id}
-💰 ${u.balance} coins
-
-`;
-
+  top.forEach((u, i) => {
+    text += `${i + 1}. ${u.userId} - ${u.balance} 💰\n`;
   });
 
-  bot.sendMessage(
-    msg.chat.id,
-    text,
-    {
-      parse_mode: "Markdown"
-    }
-  );
-
+  bot.sendMessage(msg.chat.id, text);
 });
 
-/* =========================
-   BROADCAST
-========================= */
-bot.onText(
-/\/broadcast (.+)/,
-(msg, match) => {
+/* ================= API FOR VERCEL ================= */
+app.get("/user/:id", async (req, res) => {
 
-  if (
-    msg.chat.id !== ADMIN_ID
-  ) return;
+  const user = await User.findOne({ userId: req.params.id });
 
-  const text = match[1];
-
-  Object.keys(users)
-  .forEach((id) => {
-
-    bot.sendMessage(
-      id,
-      text
-    ).catch(() => {});
-
-  });
-
-  bot.sendMessage(
-    ADMIN_ID,
-    "✅ Broadcast sent"
-  );
-
-});
-
-/* =========================
-   POST COMMAND
-========================= */
-bot.onText(
-/\/post (.+)/,
-(msg, match) => {
-
-  // admin only
-  if (
-    msg.chat.id !== ADMIN_ID
-  ) return;
-
-  const text = match[1];
-
-  sendEverywhere(
-`📢 *NEW POST*
-
-${text}`
-  );
-
-  bot.sendMessage(
-    ADMIN_ID,
-    "✅ Post sent successfully!"
-  );
-
-});
-
-/* =========================
-   DAILY BONUS
-========================= */
-function sendDailyBonus() {
-
-  Object.keys(users)
-  .forEach((id) => {
-
-    users[id].balance += 1;
-
-    bot.sendMessage(
-      id,
-`🎁 *Daily Bonus*
-
-🪙 +1 coin added to your balance!`,
-{
-  parse_mode: "Markdown"
-}
-    ).catch(() => {});
-
-  });
-
-  saveUsers();
-}
-
-// every 24h
-setInterval(
-  sendDailyBonus,
-  24 * 60 * 60 * 1000
-);
-
-/* =========================
-   API POST
-========================= */
-app.post(
-"/post",
-(req, res) => {
-
-  const text =
-    req.body.text;
-
-  if (!text) {
-
-    return res.json({
-      ok: false
-    });
-
-  }
-
-  sendEverywhere(text);
+  if (!user) return res.json({ ok: false });
 
   res.json({
-    ok: true
+    ok: true,
+    balance: user.balance,
+    refs: user.refs
   });
 
 });
 
-/* =========================
-   EXPRESS SERVER
-========================= */
-app.get("/", (req, res) => {
-  res.send(
-    "🚀 StudyBuddy Bot Running"
-  );
+app.get("/leaderboard", async (req, res) => {
+
+  const users = await User.find()
+    .sort({ balance: -1 })
+    .limit(10);
+
+  res.json(users);
 });
 
-const PORT =
-  process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-
-  console.log(
-    `🚀 Bot running on port ${PORT}`
-  );
-
+/* ================= SERVER ================= */
+app.listen(3000, () => {
+  console.log("🚀 Bot running");
 });
