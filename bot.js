@@ -1,109 +1,161 @@
+require("dotenv").config();
+
 const TelegramBot = require("node-telegram-bot-api");
 const express = require("express");
 const mongoose = require("mongoose");
 
-/* =======================
-   CONFIG (ALL IN FILE)
-======================= */
-const BOT_TOKEN = "YOUR_BOT_TOKEN";
-const MONGO_URL = "YOUR_MONGO_URL";
-const PORT = 3000;
+const token = process.env.BOT_TOKEN;
+const mongo = process.env.MONGO_URI;
+const PORT = process.env.PORT || 3000;
 
-const ADMIN_ID = 7154361039;
-const BOT_USERNAME = "Studybuddy_2025Bot";
-const CHANNEL = "@gangs234";
-const MINI_APP = "https://myapp1-khaki.vercel.app/";
+console.log("BOT:", token ? "OK" : "MISSING");
+console.log("MONGO:", mongo ? "OK" : "MISSING");
 
-/* =======================
-   CHECK CONFIG
-======================= */
-if (!BOT_TOKEN || !MONGO_URL) {
-  console.log("❌ Missing token or DB URL");
+if (!token || !mongo) {
+  console.log("❌ Missing env variables");
   process.exit(1);
 }
 
-/* =======================
-   DB CONNECT
-======================= */
-mongoose.connect(MONGO_URL)
-  .then(() => console.log("✅ DB Connected"))
-  .catch(console.log);
-
-/* =======================
-   USER MODEL
-======================= */
-const User = mongoose.model("User", {
-  userId: String,
-  balance: { type: Number, default: 0 },
-  refs: { type: Number, default: 0 },
-  referredBy: { type: String, default: null },
-  joinTime: { type: Number, default: Date.now }
+/* ================= DATABASE ================= */
+mongoose.connect(mongo)
+.then(() => {
+  console.log("✅ MongoDB Connected");
+})
+.catch(err => {
+  console.log("❌ Mongo Error:");
+  console.log(err);
 });
 
-/* =======================
-   BOT + SERVER
-======================= */
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
-
+/* ================= EXPRESS ================= */
 const app = express();
 app.use(express.json());
 
-/* =======================
-   HELPERS
-======================= */
-function refLink(id) {
+app.get("/", (req, res) => {
+  res.send("🚀 Bot Running");
+});
+
+/* ================= BOT ================= */
+const bot = new TelegramBot(token, {
+  polling: {
+    autoStart: true,
+    interval: 1000
+  }
+});
+
+bot.deleteWebHook()
+.then(() => {
+  console.log("✅ Webhook removed");
+})
+.catch(() => {});
+
+/* ================= CONFIG ================= */
+const BOT_USERNAME = "Studybuddy_2025Bot";
+const ADMIN_ID = 7154361039;
+const CHANNEL = "@gangs234";
+const MINI_APP = "https://myapp1-khaki.vercel.app/";
+
+/* ================= USER MODEL ================= */
+const User = mongoose.model("User", {
+  userId: String,
+  balance: {
+    type: Number,
+    default: 0
+  },
+  refs: {
+    type: Number,
+    default: 0
+  },
+  referredBy: {
+    type: String,
+    default: null
+  }
+});
+
+/* ================= HELPERS ================= */
+function getRef(id) {
   return `https://t.me/${BOT_USERNAME}?start=ref${id}`;
 }
 
-/* =======================
-   CHANNEL CHECK
-======================= */
-async function isMember(id) {
+/* ================= CHANNEL CHECK ================= */
+async function checkJoin(id) {
   try {
-    const res = await bot.getChatMember(CHANNEL, id);
-    return ["member", "administrator", "creator"].includes(res.status);
+
+    const member =
+      await bot.getChatMember(CHANNEL, id);
+
+    return [
+      "member",
+      "administrator",
+      "creator"
+    ].includes(member.status);
+
   } catch {
     return false;
   }
 }
 
-/* =======================
-   START COMMAND
-======================= */
+/* ================= START ================= */
 bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
 
   const chatId = String(msg.chat.id);
   const param = match?.[1];
 
-  if (!(await isMember(chatId))) {
-    return bot.sendMessage(chatId,
+  const joined = await checkJoin(chatId);
+
+  if (!joined) {
+
+    return bot.sendMessage(
+      chatId,
       "⚠️ Join channel first",
       {
         reply_markup: {
-          inline_keyboard: [[
-            { text: "Join Channel", url: "https://t.me/gangs234" }
-          ]]
+          inline_keyboard: [
+            [
+              {
+                text: "📢 Join Channel",
+                url: "https://t.me/gangs234"
+              }
+            ]
+          ]
         }
       }
     );
   }
 
-  let user = await User.findOne({ userId: chatId });
+  let user =
+    await User.findOne({
+      userId: chatId
+    });
 
   if (!user) {
-    user = await User.create({ userId: chatId });
+
+    user = await User.create({
+      userId: chatId
+    });
   }
 
   /* ================= REFERRAL ================= */
-  if (param?.startsWith("ref")) {
 
-    const refId = param.replace("ref", "");
+  if (
+    param &&
+    param.startsWith("ref")
+  ) {
 
-    if (refId !== chatId && !user.referredBy) {
+    const refId =
+      param.replace("ref", "");
 
-      const refUser = await User.findOne({ userId: refId });
+    if (
+      refId !== chatId &&
+      !user.referredBy
+    ) {
+
+      const refUser =
+        await User.findOne({
+          userId: refId
+        });
 
       if (refUser) {
+
         user.referredBy = refId;
 
         refUser.refs += 1;
@@ -112,105 +164,163 @@ bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
         await user.save();
         await refUser.save();
 
-        bot.sendMessage(refId, "🎉 +10 coins referral reward!");
+        bot.sendMessage(
+          refId,
+          "🎉 +10 referral coins!"
+        );
       }
     }
   }
 
-  const link = refLink(chatId);
+  const link = getRef(chatId);
 
-  bot.sendMessage(chatId,
-`🔥 WELCOME
+  bot.sendMessage(
+    chatId,
+`🔥 WELCOME TO STUDYBUDDY
 
 💰 Balance: ${user.balance}
 👥 Referrals: ${user.refs}
 
-🔗 ${link}`,
+🔗 Your Link:
+${link}`,
 {
   reply_markup: {
     inline_keyboard: [
-      [{ text: "🚀 Open App", web_app: { url: MINI_APP } }],
-      [{ text: "🔗 Share Link", url: link }]
+      [
+        {
+          text: "🚀 Open App",
+          web_app: {
+            url: MINI_APP
+          }
+        }
+      ],
+      [
+        {
+          text: "🔗 Share Referral",
+          url: link
+        }
+      ]
     ]
   }
 });
 
 });
 
-/* =======================
-   BALANCE
-======================= */
+/* ================= BALANCE ================= */
 bot.onText(/\/balance/, async (msg) => {
 
-  const user = await User.findOne({ userId: String(msg.chat.id) });
+  const user =
+    await User.findOne({
+      userId: String(msg.chat.id)
+    });
 
-  bot.sendMessage(msg.chat.id,
-`💰 Balance: ${user?.balance || 0}`);
+  bot.sendMessage(
+    msg.chat.id,
+`💰 Balance:
+${user?.balance || 0} coins`
+  );
 });
 
-/* =======================
-   TOP USERS
-======================= */
+/* ================= TOP ================= */
 bot.onText(/\/top/, async (msg) => {
 
-  const top = await User.find()
+  const top =
+    await User.find()
     .sort({ balance: -1 })
     .limit(10);
 
-  let text = "🏆 TOP USERS\n\n";
+  let text =
+`🏆 TOP USERS
+
+`;
 
   top.forEach((u, i) => {
-    text += `${i + 1}. ${u.userId} - ${u.balance}\n`;
+
+    text +=
+`${i + 1}. ${u.userId}
+💰 ${u.balance} coins
+
+`;
+
   });
 
-  bot.sendMessage(msg.chat.id, text);
+  bot.sendMessage(
+    msg.chat.id,
+    text
+  );
 });
 
-/* =======================
-   WITHDRAW
-======================= */
-bot.onText(/\/withdraw (.+)/, async (msg, match) => {
+/* ================= WITHDRAW ================= */
+bot.onText(
+/\/withdraw (.+)/,
+async (msg, match) => {
 
-  const id = String(msg.chat.id);
-  const amount = Number(match[1]);
+  const id =
+    String(msg.chat.id);
 
-  const user = await User.findOne({ userId: id });
+  const amount =
+    Number(match[1]);
 
-  if (!user || user.balance < amount) {
-    return bot.sendMessage(id, "❌ Not enough balance");
+  const user =
+    await User.findOne({
+      userId: id
+    });
+
+  if (
+    !user ||
+    user.balance < amount
+  ) {
+
+    return bot.sendMessage(
+      id,
+      "❌ Not enough balance"
+    );
   }
 
   user.balance -= amount;
+
   await user.save();
 
-  bot.sendMessage(ADMIN_ID,
-`💸 Withdraw
-User: ${id}
-Amount: ${amount}`);
+  bot.sendMessage(
+    ADMIN_ID,
+`💸 Withdrawal Request
 
-  bot.sendMessage(id, "⏳ Sent to admin");
+👤 User: ${id}
+💰 Amount: ${amount}`
+  );
+
+  bot.sendMessage(
+    id,
+    "⏳ Withdrawal sent to admin"
+  );
 });
 
-/* =======================
-   API FOR VERCEL APP
-======================= */
+/* ================= API ================= */
 app.get("/user/:id", async (req, res) => {
 
-  const user = await User.findOne({ userId: req.params.id });
+  const user =
+    await User.findOne({
+      userId: req.params.id
+    });
 
-  if (!user) return res.json({ ok: false });
+  if (!user) {
+
+    return res.json({
+      ok: false
+    });
+  }
 
   res.json({
     ok: true,
     balance: user.balance,
     refs: user.refs
   });
-
 });
 
-/* =======================
-   SERVER START
-======================= */
+/* ================= SERVER ================= */
 app.listen(PORT, () => {
-  console.log("🚀 Server running on", PORT);
+
+  console.log(
+    `🚀 Server running on ${PORT}`
+  );
 });
