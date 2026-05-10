@@ -27,8 +27,6 @@ app.use(express.json());
 mongoose.connect(MONGO_URI)
   .then(() => console.log("✅ DB Connected"));
 
-/* ================= USER MODEL ================= */
-
 const User = mongoose.model("User", {
   userId: String,
   balance: { type: Number, default: 0 },
@@ -41,7 +39,7 @@ app.get("/", (req, res) => {
   res.send("🚀 Bot Running");
 });
 
-/* ================= HELPER: POST ================= */
+/* ================= POST HELPER ================= */
 
 async function postAll(text) {
   try {
@@ -61,16 +59,77 @@ bot.onText(/\/start/, async (msg) => {
   if (!user) user = await User.create({ userId: id });
 
   bot.sendMessage(id,
-`🔥 WELCOME
+`🔥 WELCOME TO BOT
 
 💰 Balance: ${user.balance}
-👥 Ref: ${user.refs}
+👥 Referrals: ${user.refs}
 
-Commands:
-/ref /balance /withdraw`);
+Choose action 👇`,
+{
+  reply_markup: {
+    inline_keyboard: [
+      [
+        { text: "🚀 Start Bot", callback_data: "start_bot" }
+      ],
+      [
+        { text: "💰 Balance", callback_data: "balance" },
+        { text: "👥 Referrals", callback_data: "refs" }
+      ],
+      [
+        { text: "🏆 Top Users", callback_data: "top" }
+      ],
+      [
+        { text: "📢 Join Channel", url: "https://t.me/gangs234" }
+      ]
+    ]
+  }
+});
 });
 
-/* ================= REF ================= */
+/* ================= CALLBACKS ================= */
+
+bot.on("callback_query", async (q) => {
+  const id = String(q.message.chat.id);
+  const user = await User.findOne({ userId: id });
+
+  if (!user) return;
+
+  if (q.data === "start_bot") {
+    return bot.sendMessage(id, "🚀 Bot Started Successfully!");
+  }
+
+  if (q.data === "balance") {
+    return bot.sendMessage(id, `💰 Balance: ${user.balance}`);
+  }
+
+  if (q.data === "refs") {
+    const link = `https://t.me/YourBot?start=ref${id}`;
+
+    return bot.sendMessage(id,
+`👥 REF INFO
+
+👥 Referrals: ${user.refs}
+
+🔗 Link:
+${link}`);
+  }
+
+  if (q.data === "top") {
+    const top = await User.find().sort({ balance: -1 }).limit(10);
+
+    let text = "🏆 TOP USERS\n\n";
+
+    top.forEach((u, i) => {
+      text += `${i + 1}. ${u.userId} - 💰 ${u.balance}\n`;
+    });
+
+    return bot.sendMessage(id, text);
+  }
+
+  bot.answerCallbackQuery(q.id).catch(() => {});
+});
+
+/* ================= REF COMMAND ================= */
 
 bot.onText(/\/ref/, async (msg) => {
   const id = String(msg.chat.id);
@@ -78,7 +137,7 @@ bot.onText(/\/ref/, async (msg) => {
   let user = await User.findOne({ userId: id });
   if (!user) user = await User.create({ userId: id });
 
-  const link = `https://t.me/@Studybuddy_2025Bot?start=ref${id}`;
+  const link = `https://t.me/YourBot?start=ref${id}`;
 
   bot.sendMessage(id,
 `👥 REF SYSTEM
@@ -89,16 +148,7 @@ ${link}
 👥 Referrals: ${user.refs}`);
 });
 
-/* ================= BALANCE ================= */
-
-bot.onText(/\/balance/, async (msg) => {
-  const user = await User.findOne({ userId: String(msg.chat.id) });
-
-  bot.sendMessage(msg.chat.id,
-`💰 Balance: ${user?.balance || 0}`);
-});
-
-/* ================= /POST ================= */
+/* ================= POST COMMAND ================= */
 
 bot.onText(/\/post (.+)/, async (msg, match) => {
   if (msg.chat.id != ADMIN_ID) return;
@@ -107,10 +157,10 @@ bot.onText(/\/post (.+)/, async (msg, match) => {
 
   await postAll(`📢 *UPDATE*\n\n${text}`);
 
-  bot.sendMessage(ADMIN_ID, "✅ Posted to channel & group");
+  bot.sendMessage(ADMIN_ID, "✅ Posted");
 });
 
-/* ================= /POSTTOP ================= */
+/* ================= POST TOP ================= */
 
 bot.onText(/\/posttop/, async (msg) => {
   if (msg.chat.id != ADMIN_ID) return;
@@ -128,7 +178,7 @@ bot.onText(/\/posttop/, async (msg) => {
   bot.sendMessage(ADMIN_ID, "✅ Leaderboard posted");
 });
 
-/* ================= /ACTIVE ================= */
+/* ================= ACTIVE ================= */
 
 bot.onText(/\/active/, async (msg) => {
   if (msg.chat.id != ADMIN_ID) return;
@@ -136,18 +186,17 @@ bot.onText(/\/active/, async (msg) => {
   const total = await User.countDocuments();
 
   const text =
-`🔥 DAILY ACTIVE REPORT
+`🔥 ACTIVE REPORT
 
 👥 Users: ${total}
-🚀 System Active
-💰 Keep earning!`;
+🚀 System running strong`;
 
   await postAll(text);
 
-  bot.sendMessage(ADMIN_ID, "✅ Active report sent");
+  bot.sendMessage(ADMIN_ID, "✅ Active posted");
 });
 
-/* ================= /MOTIVATE ================= */
+/* ================= MOTIVATE ================= */
 
 bot.onText(/\/motivate/, async (msg) => {
   if (msg.chat.id != ADMIN_ID) return;
@@ -156,56 +205,15 @@ bot.onText(/\/motivate/, async (msg) => {
 `🚀 MOTIVATION
 
 💰 Invite friends
-🏆 Reach top
-🎁 Earn daily rewards`;
+🏆 Reach leaderboard
+🎁 Earn rewards`;
 
   await postAll(text);
 
   bot.sendMessage(ADMIN_ID, "✅ Motivation sent");
 });
 
-/* ================= WITHDRAW (OPTIONAL BASIC) ================= */
-
-bot.onText(/\/withdraw (.+)/, async (msg, match) => {
-  const id = String(msg.chat.id);
-  const amount = Number(match[1]);
-
-  const user = await User.findOne({ userId: id });
-
-  if (!user || user.balance < amount)
-    return bot.sendMessage(id, "❌ Not enough balance");
-
-  bot.sendMessage(ADMIN_ID,
-`💸 WITHDRAW
-
-User: ${id}
-Amount: ${amount}
-
-Approve:
-/approve ${id} ${amount}`);
-
-  bot.sendMessage(id, "📤 Sent to admin");
-});
-
-/* ================= ADMIN APPROVE ================= */
-
-bot.onText(/\/approve (.+) (.+)/, async (msg, match) => {
-  if (msg.chat.id != ADMIN_ID) return;
-
-  const id = match[1];
-  const amount = Number(match[2]);
-
-  const user = await User.findOne({ userId: id });
-
-  if (!user) return;
-
-  user.balance -= amount;
-  await user.save();
-
-  bot.sendMessage(id, `✅ Approved ${amount}`);
-});
-
-/* ================= SERVER START ================= */
+/* ================= SERVER ================= */
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on ${PORT}`);
