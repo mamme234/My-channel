@@ -5,8 +5,8 @@ const mongoose = require("mongoose");
 /* =======================
    CONFIG (ALL IN FILE)
 ======================= */
-const BOT_TOKEN = "YOUR_BOT_TOKEN";
-const MONGO_URL = "YOUR_MONGO_URL";
+const BOT_TOKEN = "8344006616:AAHjUWxVuY5SrepQxbOgQsj4LcihctUq1XI";
+const MONGO_URL = "mongodb+srv://Muhammad12:Muhammad123@cluster0.mongodb.net/cryptoDB";
 const PORT = 3000;
 
 const ADMIN_ID = 7154361039;
