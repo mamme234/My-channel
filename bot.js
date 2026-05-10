@@ -2,53 +2,74 @@ const TelegramBot = require("node-telegram-bot-api");
 const express = require("express");
 const mongoose = require("mongoose");
 
-const app = express();
-app.use(express.json());
+/* =======================
+   CONFIG (ALL IN FILE)
+======================= */
+const BOT_TOKEN = "YOUR_BOT_TOKEN";
+const MONGO_URL = "YOUR_MONGO_URL";
+const PORT = 3000;
 
-const token = process.env.BOT_TOKEN;
-const MONGO_URL = process.env.MONGO_URL;
+const ADMIN_ID = 7154361039;
+const BOT_USERNAME = "Studybuddy_2025Bot";
+const CHANNEL = "@gangs234";
+const MINI_APP = "https://myapp1-khaki.vercel.app/";
 
-if (!token || !MONGO_URL) {
-  console.log("❌ Missing env variables");
+/* =======================
+   CHECK CONFIG
+======================= */
+if (!BOT_TOKEN || !MONGO_URL) {
+  console.log("❌ Missing token or DB URL");
   process.exit(1);
 }
 
-/* ================= DB ================= */
+/* =======================
+   DB CONNECT
+======================= */
 mongoose.connect(MONGO_URL)
-  .then(() => console.log("✅ DB Connected"));
+  .then(() => console.log("✅ DB Connected"))
+  .catch(console.log);
 
+/* =======================
+   USER MODEL
+======================= */
 const User = mongoose.model("User", {
   userId: String,
   balance: { type: Number, default: 0 },
   refs: { type: Number, default: 0 },
-  referredBy: String,
+  referredBy: { type: String, default: null },
   joinTime: { type: Number, default: Date.now }
 });
 
-/* ================= BOT ================= */
-const bot = new TelegramBot(token, { polling: true });
+/* =======================
+   BOT + SERVER
+======================= */
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
-const BOT_USERNAME = "Studybuddy_2025Bot";
-const ADMIN_ID = 7154361039;
-const CHANNEL = "@gangs234";
-const MINI_APP = "https://myapp1-khaki.vercel.app/";
+const app = express();
+app.use(express.json());
 
-/* ================= HELPERS ================= */
-function getLink(id) {
+/* =======================
+   HELPERS
+======================= */
+function refLink(id) {
   return `https://t.me/${BOT_USERNAME}?start=ref${id}`;
 }
 
-/* ================= CHANNEL CHECK ================= */
-async function isMember(userId) {
+/* =======================
+   CHANNEL CHECK
+======================= */
+async function isMember(id) {
   try {
-    const res = await bot.getChatMember(CHANNEL, userId);
-    return ["member", "creator", "administrator"].includes(res.status);
+    const res = await bot.getChatMember(CHANNEL, id);
+    return ["member", "administrator", "creator"].includes(res.status);
   } catch {
     return false;
   }
 }
 
-/* ================= START ================= */
+/* =======================
+   START COMMAND
+======================= */
 bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
 
   const chatId = String(msg.chat.id);
@@ -83,7 +104,6 @@ bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
       const refUser = await User.findOne({ userId: refId });
 
       if (refUser) {
-
         user.referredBy = refId;
 
         refUser.refs += 1;
@@ -92,12 +112,12 @@ bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
         await user.save();
         await refUser.save();
 
-        bot.sendMessage(refId, "🎉 +10 coins from referral!");
+        bot.sendMessage(refId, "🎉 +10 coins referral reward!");
       }
     }
   }
 
-  const link = getLink(chatId);
+  const link = refLink(chatId);
 
   bot.sendMessage(chatId,
 `🔥 WELCOME
@@ -109,28 +129,46 @@ bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
 {
   reply_markup: {
     inline_keyboard: [
-      [{ text: "Open App", web_app: { url: MINI_APP } }],
-      [{ text: "Referral Link", url: link }],
-      [{ text: "Balance", callback_data: "balance" }]
+      [{ text: "🚀 Open App", web_app: { url: MINI_APP } }],
+      [{ text: "🔗 Share Link", url: link }]
     ]
   }
 });
+
 });
 
-/* ================= CALLBACK ================= */
-bot.on("callback_query", async (q) => {
+/* =======================
+   BALANCE
+======================= */
+bot.onText(/\/balance/, async (msg) => {
 
-  const id = String(q.message.chat.id);
-  const user = await User.findOne({ userId: id });
+  const user = await User.findOne({ userId: String(msg.chat.id) });
 
-  if (q.data === "balance") {
-    bot.sendMessage(id, `💰 Balance: ${user?.balance || 0}`);
-  }
-
-  bot.answerCallbackQuery(q.id);
+  bot.sendMessage(msg.chat.id,
+`💰 Balance: ${user?.balance || 0}`);
 });
 
-/* ================= WITHDRAW ================= */
+/* =======================
+   TOP USERS
+======================= */
+bot.onText(/\/top/, async (msg) => {
+
+  const top = await User.find()
+    .sort({ balance: -1 })
+    .limit(10);
+
+  let text = "🏆 TOP USERS\n\n";
+
+  top.forEach((u, i) => {
+    text += `${i + 1}. ${u.userId} - ${u.balance}\n`;
+  });
+
+  bot.sendMessage(msg.chat.id, text);
+});
+
+/* =======================
+   WITHDRAW
+======================= */
 bot.onText(/\/withdraw (.+)/, async (msg, match) => {
 
   const id = String(msg.chat.id);
@@ -146,30 +184,16 @@ bot.onText(/\/withdraw (.+)/, async (msg, match) => {
   await user.save();
 
   bot.sendMessage(ADMIN_ID,
-`💸 Withdraw request
+`💸 Withdraw
 User: ${id}
 Amount: ${amount}`);
 
-  bot.sendMessage(id, "⏳ Request sent");
+  bot.sendMessage(id, "⏳ Sent to admin");
 });
 
-/* ================= LEADERBOARD ================= */
-bot.onText(/\/top/, async (msg) => {
-
-  const top = await User.find()
-    .sort({ balance: -1 })
-    .limit(10);
-
-  let text = "🏆 TOP USERS\n\n";
-
-  top.forEach((u, i) => {
-    text += `${i + 1}. ${u.userId} - ${u.balance} 💰\n`;
-  });
-
-  bot.sendMessage(msg.chat.id, text);
-});
-
-/* ================= API FOR VERCEL ================= */
+/* =======================
+   API FOR VERCEL APP
+======================= */
 app.get("/user/:id", async (req, res) => {
 
   const user = await User.findOne({ userId: req.params.id });
@@ -184,16 +208,9 @@ app.get("/user/:id", async (req, res) => {
 
 });
 
-app.get("/leaderboard", async (req, res) => {
-
-  const users = await User.find()
-    .sort({ balance: -1 })
-    .limit(10);
-
-  res.json(users);
-});
-
-/* ================= SERVER ================= */
-app.listen(3000, () => {
-  console.log("🚀 Bot running");
+/* =======================
+   SERVER START
+======================= */
+app.listen(PORT, () => {
+  console.log("🚀 Server running on", PORT);
 });
