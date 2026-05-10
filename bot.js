@@ -3,35 +3,32 @@ require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
 const express = require("express");
 const mongoose = require("mongoose");
-const http = require("http");
-const { Server } = require("socket.io");
 
 /* ================= CONFIG ================= */
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const MONGO_URI = process.env.MONGO_URI;
-
 const PORT = process.env.PORT || 3000;
+
 const ADMIN_ID = 7154361039;
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+/* ================= INIT ================= */
 
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
 
 app.use(express.json());
 
 /* ================= DB ================= */
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log("✅ DB Connected"));
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch(err => console.log("❌ DB Error", err));
 
-/* ================= MODELS ================= */
+/* ================= USER MODEL ================= */
 
 const User = mongoose.model("User", {
   userId: String,
-
   balance: { type: Number, default: 0 },
   refs: { type: Number, default: 0 },
   referredBy: String,
@@ -40,16 +37,7 @@ const User = mongoose.model("User", {
   level: { type: Number, default: 1 },
 
   lastDaily: { type: Number, default: 0 },
-
-  withdrawPending: { type: Boolean, default: false },
-  banned: { type: Boolean, default: false }
-});
-
-const Withdraw = mongoose.model("Withdraw", {
-  userId: String,
-  amount: Number,
-  status: { type: String, default: "pending" },
-  createdAt: { type: Number, default: Date.now }
+  withdrawPending: { type: Boolean, default: false }
 });
 
 /* ================= HELPERS ================= */
@@ -58,30 +46,20 @@ function levelUp(xp) {
   return Math.floor(xp / 100) + 1;
 }
 
-function rateLimit(user) {
-  const now = Date.now();
-  if (user.lastAction && now - user.lastAction < 1500) return false;
-  user.lastAction = now;
-  return true;
-}
+/* ================= EXPRESS ================= */
 
-function fraudCheck(user) {
-  if (user.refs > 100 && user.balance < 50) return true;
-  if (user.withdrawPending && user.balance > 1000) return true;
-  return false;
-}
+app.get("/", (req, res) => {
+  res.send("🚀 Bot is running");
+});
 
-/* ================= START ================= */
+/* ================= START COMMAND ================= */
 
 bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
   const id = String(msg.chat.id);
   const param = match?.[1];
 
   let user = await User.findOne({ userId: id });
-
-  if (!user) {
-    user = await User.create({ userId: id });
-  }
+  if (!user) user = await User.create({ userId: id });
 
   /* REF SYSTEM */
   if (param && param.startsWith("ref")) {
@@ -95,37 +73,35 @@ bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
 
         refUser.refs += 1;
         refUser.balance += 10;
-        refUser.xp += 15;
+        refUser.xp += 10;
         refUser.level = levelUp(refUser.xp);
 
-        await user.save();
         await refUser.save();
+        await user.save();
       }
     }
   }
 
   bot.sendMessage(id,
-`🔥 MASTER PLATFORM BOT
+`🔥 WELCOME BOT
 
 💰 Balance: ${user.balance}
 👥 Referrals: ${user.refs}
 ⭐ Level: ${user.level}
 
 Commands:
-/daily /balance /tasks /withdraw /top`,
+/daily /balance /withdraw /ref`,
 {
   reply_markup: {
     inline_keyboard: [
       [{ text: "💰 Balance", callback_data: "balance" }],
-      [{ text: "🎁 Daily", callback_data: "daily" }],
-      [{ text: "🎯 Tasks", callback_data: "tasks" }],
-      [{ text: "🏆 Leaderboard", callback_data: "top" }]
+      [{ text: "🎁 Daily", callback_data: "daily" }]
     ]
   }
 });
 });
 
-/* ================= CALLBACK ================= */
+/* ================= CALLBACKS ================= */
 
 bot.on("callback_query", async (q) => {
   const id = String(q.message.chat.id);
@@ -133,16 +109,12 @@ bot.on("callback_query", async (q) => {
 
   if (!user) return;
 
-  if (!rateLimit(user)) {
-    return bot.sendMessage(id, "⏳ Slow down");
-  }
-
   /* BALANCE */
   if (q.data === "balance") {
-    return bot.sendMessage(id, `💰 ${user.balance}`);
+    return bot.sendMessage(id, `💰 Balance: ${user.balance}`);
   }
 
-  /* DAILY */
+  /* DAILY REWARD */
   if (q.data === "daily") {
     const now = Date.now();
     const day = 86400000;
@@ -151,40 +123,42 @@ bot.on("callback_query", async (q) => {
       return bot.sendMessage(id, "⏳ Already claimed");
 
     user.balance += 5;
-    user.xp += 10;
+    user.xp += 5;
     user.lastDaily = now;
 
     user.level = levelUp(user.xp);
 
     await user.save();
 
-    return bot.sendMessage(id, "🎁 +5 coins");
+    return bot.sendMessage(id, "🎁 +5 coins added");
   }
+});
 
-  /* TASKS */
-  if (q.data === "tasks") {
-    user.balance += 10;
-    user.xp += 10;
+/* ================= BALANCE ================= */
 
-    user.level = levelUp(user.xp);
+bot.onText(/\/balance/, async (msg) => {
+  const user = await User.findOne({ userId: String(msg.chat.id) });
 
-    await user.save();
+  bot.sendMessage(msg.chat.id, `💰 Balance: ${user?.balance || 0}`);
+});
 
-    return bot.sendMessage(id, "🎯 Task completed +10 coins");
-  }
+/* ================= REF LINK ================= */
 
-  /* TOP */
-  if (q.data === "top") {
-    const top = await User.find().sort({ balance: -1 }).limit(10);
+bot.onText(/\/ref/, async (msg) => {
+  const id = String(msg.chat.id);
 
-    let text = "🏆 TOP USERS\n\n";
+  let user = await User.findOne({ userId: id });
+  if (!user) user = await User.create({ userId: id });
 
-    top.forEach((u, i) => {
-      text += `${i + 1}. ${u.userId} - ${u.balance}\n`;
-    });
+  const link = `https://t.me/YourBot?start=ref${id}`;
 
-    return bot.sendMessage(id, text);
-  }
+  bot.sendMessage(id,
+`👥 REF INFO
+
+🔗 Your link:
+${link}
+
+👥 Referrals: ${user.refs}`);
 });
 
 /* ================= WITHDRAW ================= */
@@ -198,23 +172,22 @@ bot.onText(/\/withdraw (.+)/, async (msg, match) => {
   if (!user || user.balance < amount)
     return bot.sendMessage(id, "❌ Not enough balance");
 
-  if (fraudCheck(user))
-    return bot.sendMessage(id, "🚫 Account flagged");
-
-  await Withdraw.create({
-    userId: id,
-    amount
-  });
-
   user.withdrawPending = true;
   await user.save();
 
-  io.emit("withdraw:new", { id, amount });
+  bot.sendMessage(ADMIN_ID,
+`💳 WITHDRAW REQUEST
+
+User: ${id}
+Amount: ${amount}
+
+Approve:
+/approve ${id} ${amount}`);
 
   bot.sendMessage(id, "📤 Sent to admin");
 });
 
-/* ================= ADMIN ================= */
+/* ================= ADMIN APPROVE ================= */
 
 bot.onText(/\/approve (.+) (.+)/, async (msg, match) => {
   if (msg.chat.id != ADMIN_ID) return;
@@ -224,15 +197,15 @@ bot.onText(/\/approve (.+) (.+)/, async (msg, match) => {
 
   const user = await User.findOne({ userId: id });
 
-  if (!user) return;
-
   user.balance -= amount;
   user.withdrawPending = false;
 
   await user.save();
 
-  bot.sendMessage(id, `✅ Paid ${amount}`);
+  bot.sendMessage(id, `✅ Approved ${amount}`);
 });
+
+/* ================= ADMIN REJECT ================= */
 
 bot.onText(/\/reject (.+)/, async (msg, match) => {
   if (msg.chat.id != ADMIN_ID) return;
@@ -241,49 +214,14 @@ bot.onText(/\/reject (.+)/, async (msg, match) => {
 
   const user = await User.findOne({ userId: id });
 
-  if (!user) return;
-
   user.withdrawPending = false;
   await user.save();
 
   bot.sendMessage(id, "❌ Rejected");
 });
 
-/* ================= ADMIN BROADCAST ================= */
-
-bot.onText(/\/post (.+)/, async (msg, match) => {
-  if (msg.chat.id != ADMIN_ID) return;
-
-  const text = match[1];
-
-  const users = await User.find();
-
-  users.forEach(u => {
-    bot.sendMessage(u.userId, `📢 ${text}`).catch(() => {});
-  });
-
-  bot.sendMessage(ADMIN_ID, "✅ Broadcast sent");
-});
-
-/* ================= API ================= */
-
-app.get("/api/stats", async (req, res) => {
-  const users = await User.countDocuments();
-
-  const all = await User.find();
-
-  let balance = 0;
-
-  all.forEach(u => balance += u.balance);
-
-  res.json({
-    users,
-    totalBalance: balance
-  });
-});
-
 /* ================= SERVER ================= */
 
-server.listen(PORT, () => {
-  console.log("🚀 MASTER SYSTEM RUNNING");
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on ${PORT}`);
 });
