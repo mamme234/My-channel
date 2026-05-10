@@ -4,84 +4,136 @@ const TelegramBot = require("node-telegram-bot-api");
 const express = require("express");
 const mongoose = require("mongoose");
 
-const token = process.env.BOT_TOKEN;
-const mongo = process.env.MONGO_URI;
+/* ================= CONFIG ================= */
+
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const MONGO_URI = process.env.MONGO_URI;
 const PORT = process.env.PORT || 3000;
 
-console.log("BOT:", token ? "OK" : "MISSING");
-console.log("MONGO:", mongo ? "OK" : "MISSING");
+const BOT_USERNAME = "Studybuddy_2025Bot";
 
-if (!token || !mongo) {
-  console.log("❌ Missing env variables");
+const CHANNEL = "@gangs234";
+const GROUP_ID = "-1003984859530";
+
+const ADMIN_ID = 7154361039;
+
+const MINI_APP =
+  "https://myapp1-khaki.vercel.app/";
+
+/* ================= CHECK ================= */
+
+console.log(
+  "BOT:",
+  BOT_TOKEN ? "OK" : "MISSING"
+);
+
+console.log(
+  "MONGO:",
+  MONGO_URI ? "OK" : "MISSING"
+);
+
+if (!BOT_TOKEN || !MONGO_URI) {
+
+  console.log(
+    "❌ Missing env variables"
+  );
+
   process.exit(1);
 }
 
 /* ================= DATABASE ================= */
-mongoose.connect(mongo)
+
+mongoose.connect(MONGO_URI)
 .then(() => {
-  console.log("✅ MongoDB Connected");
+
+  console.log(
+    "✅ MongoDB Connected"
+  );
+
 })
-.catch(err => {
-  console.log("❌ Mongo Error:");
+.catch((err) => {
+
+  console.log(
+    "❌ Mongo Error"
+  );
+
   console.log(err);
+
 });
-
-/* ================= EXPRESS ================= */
-const app = express();
-app.use(express.json());
-
-app.get("/", (req, res) => {
-  res.send("🚀 Bot Running");
-});
-
-/* ================= BOT ================= */
-const bot = new TelegramBot(token, {
-  polling: {
-    autoStart: true,
-    interval: 1000
-  }
-});
-
-bot.deleteWebHook()
-.then(() => {
-  console.log("✅ Webhook removed");
-})
-.catch(() => {});
-
-/* ================= CONFIG ================= */
-const BOT_USERNAME = "Studybuddy_2025Bot";
-const ADMIN_ID = 7154361039;
-const CHANNEL = "@gangs234";
-const MINI_APP = "https://myapp1-khaki.vercel.app/";
 
 /* ================= USER MODEL ================= */
+
 const User = mongoose.model("User", {
+
   userId: String,
+
   balance: {
     type: Number,
     default: 0
   },
+
   refs: {
     type: Number,
     default: 0
   },
+
   referredBy: {
     type: String,
     default: null
+  },
+
+  joinTime: {
+    type: Number,
+    default: Date.now
   }
+
 });
 
+/* ================= EXPRESS ================= */
+
+const app = express();
+
+app.use(express.json());
+
+app.get("/", (req, res) => {
+
+  res.send(
+    "🚀 StudyBuddy Bot Running"
+  );
+
+});
+
+/* ================= BOT ================= */
+
+const bot = new TelegramBot(
+  BOT_TOKEN,
+  {
+    polling: true
+  }
+);
+
+bot.deleteWebHook()
+.catch(() => {});
+
 /* ================= HELPERS ================= */
-function getRef(id) {
+
+function getRefLink(id) {
+
   return `https://t.me/${BOT_USERNAME}?start=ref${id}`;
+
 }
 
 /* ================= CHANNEL CHECK ================= */
+
 async function checkJoin(id) {
+
   try {
 
     const member =
-      await bot.getChatMember(CHANNEL, id);
+      await bot.getChatMember(
+        CHANNEL,
+        id
+      );
 
     return [
       "member",
@@ -90,17 +142,26 @@ async function checkJoin(id) {
     ].includes(member.status);
 
   } catch {
+
     return false;
+
   }
 }
 
 /* ================= START ================= */
-bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
 
-  const chatId = String(msg.chat.id);
-  const param = match?.[1];
+bot.onText(
+/\/start(?: (.+))?/,
+async (msg, match) => {
 
-  const joined = await checkJoin(chatId);
+  const chatId =
+    String(msg.chat.id);
+
+  const param =
+    match?.[1];
+
+  const joined =
+    await checkJoin(chatId);
 
   if (!joined) {
 
@@ -129,9 +190,11 @@ bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
 
   if (!user) {
 
-    user = await User.create({
-      userId: chatId
-    });
+    user =
+      await User.create({
+        userId: chatId
+      });
+
   }
 
   /* ================= REFERRAL ================= */
@@ -156,48 +219,233 @@ bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
 
       if (refUser) {
 
-        user.referredBy = refId;
+        user.referredBy =
+          refId;
 
         refUser.refs += 1;
+
         refUser.balance += 10;
 
         await user.save();
+
         await refUser.save();
 
         bot.sendMessage(
           refId,
-          "🎉 +10 referral coins!"
+          "🎉 You earned +10 coins from referral!"
         );
+
       }
     }
   }
 
-  const link = getRef(chatId);
+  const link =
+    getRefLink(chatId);
 
   bot.sendMessage(
     chatId,
-`🔥 WELCOME TO STUDYBUDDY
+`🔥 *WELCOME TO STUDYBUDDY* 🔥
 
-💰 Balance: ${user.balance}
-👥 Referrals: ${user.refs}
+💰 Balance: *${user.balance} coins*
+👥 Referrals: *${user.refs}*
 
-🔗 Your Link:
-${link}`,
+🔗 *Your Referral Link:*
+${link}
+
+🚀 Press the button below to start earning!`,
 {
+  parse_mode: "Markdown",
   reply_markup: {
     inline_keyboard: [
+
       [
         {
-          text: "🚀 Open App",
+          text: "🚀 Start App",
           web_app: {
             url: MINI_APP
           }
         }
       ],
+
+      [
+        {
+          text: "👥 My Referrals",
+          callback_data: "refs"
+        },
+
+        {
+          text: "💰 Balance",
+          callback_data: "balance"
+        }
+      ],
+
+      [
+        {
+          text: "🏆 Leaderboard",
+          callback_data: "top"
+        }
+      ],
+
+      [
+        {
+          text: "📢 Join Channel",
+          url: "https://t.me/gangs234"
+        }
+      ]
+
+    ]
+  }
+});
+
+});
+
+/* ================= CALLBACKS ================= */
+
+bot.on(
+"callback_query",
+async (query) => {
+
+  const chatId =
+    String(
+      query.message.chat.id
+    );
+
+  const user =
+    await User.findOne({
+      userId: chatId
+    });
+
+  /* ================= REFERRALS ================= */
+
+  if (
+    query.data === "refs"
+  ) {
+
+    const link =
+      getRefLink(chatId);
+
+    bot.sendMessage(
+      chatId,
+`👥 *YOUR REFERRALS*
+
+📊 Referrals: *${user?.refs || 0}*
+
+💰 Balance: *${user?.balance || 0} coins*
+
+🔗 *Referral Link:*
+${link}`,
+{
+  parse_mode: "Markdown"
+});
+
+  }
+
+  /* ================= BALANCE ================= */
+
+  if (
+    query.data === "balance"
+  ) {
+
+    bot.sendMessage(
+      chatId,
+`💰 *YOUR BALANCE*
+
+🪙 ${user?.balance || 0} coins`,
+{
+  parse_mode: "Markdown"
+});
+
+  }
+
+  /* ================= TOP ================= */
+
+  if (
+    query.data === "top"
+  ) {
+
+    const top =
+      await User.find()
+      .sort({
+        balance: -1
+      })
+      .limit(10);
+
+    let text =
+`🏆 *TOP USERS*
+
+`;
+
+    top.forEach((u, i) => {
+
+      text +=
+`${i + 1}. ${u.userId}
+💰 ${u.balance} coins
+
+`;
+
+    });
+
+    bot.sendMessage(
+      chatId,
+      text,
+      {
+        parse_mode: "Markdown"
+      }
+    );
+
+  }
+
+  bot.answerCallbackQuery(
+    query.id
+  ).catch(() => {});
+
+});
+
+/* ================= /REF ================= */
+
+bot.onText(
+/\/ref/,
+async (msg) => {
+
+  const chatId =
+    String(msg.chat.id);
+
+  let user =
+    await User.findOne({
+      userId: chatId
+    });
+
+  if (!user) {
+
+    user =
+      await User.create({
+        userId: chatId
+      });
+
+  }
+
+  const link =
+    getRefLink(chatId);
+
+  bot.sendMessage(
+    chatId,
+`👥 *YOUR REFERRAL INFO*
+
+📊 Referrals: *${user.refs}*
+
+💰 Balance: *${user.balance} coins*
+
+🔗 *Your Referral Link:*
+${link}`,
+{
+  parse_mode: "Markdown",
+  reply_markup: {
+    inline_keyboard: [
       [
         {
           text: "🔗 Share Referral",
-          url: link
+          url:
+`https://t.me/share/url?url=${encodeURIComponent(link)}`
         }
       ]
     ]
@@ -206,31 +454,44 @@ ${link}`,
 
 });
 
-/* ================= BALANCE ================= */
-bot.onText(/\/balance/, async (msg) => {
+/* ================= /BALANCE ================= */
+
+bot.onText(
+/\/balance/,
+async (msg) => {
 
   const user =
     await User.findOne({
-      userId: String(msg.chat.id)
+      userId:
+        String(msg.chat.id)
     });
 
   bot.sendMessage(
     msg.chat.id,
-`💰 Balance:
-${user?.balance || 0} coins`
-  );
+`💰 *BALANCE*
+
+🪙 ${user?.balance || 0} coins`,
+{
+  parse_mode: "Markdown"
 });
 
-/* ================= TOP ================= */
-bot.onText(/\/top/, async (msg) => {
+});
+
+/* ================= /TOP ================= */
+
+bot.onText(
+/\/top/,
+async (msg) => {
 
   const top =
     await User.find()
-    .sort({ balance: -1 })
+    .sort({
+      balance: -1
+    })
     .limit(10);
 
   let text =
-`🏆 TOP USERS
+`🏆 *TOP USERS*
 
 `;
 
@@ -246,16 +507,216 @@ bot.onText(/\/top/, async (msg) => {
 
   bot.sendMessage(
     msg.chat.id,
-    text
+    text,
+    {
+      parse_mode: "Markdown"
+    }
   );
+
 });
 
-/* ================= WITHDRAW ================= */
+/* ================= /POST ================= */
+
+bot.onText(
+/\/post (.+)/,
+async (msg, match) => {
+
+  if (
+    msg.chat.id !== ADMIN_ID
+  ) return;
+
+  const text =
+    match[1];
+
+  const options = {
+
+    parse_mode: "Markdown",
+
+    reply_markup: {
+      inline_keyboard: [
+        [
+          {
+            text: "🚀 Open App",
+            url: MINI_APP
+          }
+        ]
+      ]
+    }
+
+  };
+
+  bot.sendMessage(
+    CHANNEL,
+`📢 *UPDATE*
+
+${text}`,
+    options
+  ).catch(console.log);
+
+  bot.sendMessage(
+    GROUP_ID,
+`📢 *UPDATE*
+
+${text}`,
+    options
+  ).catch(console.log);
+
+  bot.sendMessage(
+    ADMIN_ID,
+    "✅ Posted successfully"
+  );
+
+});
+
+/* ================= /POSTTOP ================= */
+
+bot.onText(
+/\/posttop/,
+async (msg) => {
+
+  if (
+    msg.chat.id !== ADMIN_ID
+  ) return;
+
+  const top =
+    await User.find()
+    .sort({
+      balance: -1
+    })
+    .limit(10);
+
+  let text =
+`🏆 *TOP USERS*
+
+`;
+
+  top.forEach((u, i) => {
+
+    text +=
+`${i + 1}. ${u.userId}
+💰 ${u.balance} coins
+
+`;
+
+  });
+
+  bot.sendMessage(
+    CHANNEL,
+    text,
+    {
+      parse_mode: "Markdown"
+    }
+  );
+
+  bot.sendMessage(
+    GROUP_ID,
+    text,
+    {
+      parse_mode: "Markdown"
+    }
+  );
+
+  bot.sendMessage(
+    ADMIN_ID,
+    "✅ Leaderboard posted"
+  );
+
+});
+
+/* ================= /ACTIVE ================= */
+
+bot.onText(
+/\/active/,
+async (msg) => {
+
+  if (
+    msg.chat.id !== ADMIN_ID
+  ) return;
+
+  const total =
+    await User.countDocuments();
+
+  const text =
+`🔥 *DAILY ACTIVITY*
+
+👥 Total Users: *${total}*
+
+🚀 Users are earning daily rewards!
+
+💰 Invite friends and climb leaderboard!`;
+
+  bot.sendMessage(
+    CHANNEL,
+    text,
+    {
+      parse_mode: "Markdown"
+    }
+  );
+
+  bot.sendMessage(
+    GROUP_ID,
+    text,
+    {
+      parse_mode: "Markdown"
+    }
+  );
+
+  bot.sendMessage(
+    ADMIN_ID,
+    "✅ Activity posted"
+  );
+
+});
+
+/* ================= /MOTIVATE ================= */
+
+bot.onText(
+/\/motivate/,
+async (msg) => {
+
+  if (
+    msg.chat.id !== ADMIN_ID
+  ) return;
+
+  const text =
+`🚀 *KEEP EARNING!*
+
+💰 Invite more friends
+🏆 Reach leaderboard
+🎁 Earn daily rewards
+
+🔥 Stay active and earn more coins!`;
+
+  bot.sendMessage(
+    CHANNEL,
+    text,
+    {
+      parse_mode: "Markdown"
+    }
+  );
+
+  bot.sendMessage(
+    GROUP_ID,
+    text,
+    {
+      parse_mode: "Markdown"
+    }
+  );
+
+  bot.sendMessage(
+    ADMIN_ID,
+    "✅ Motivation posted"
+  );
+
+});
+
+/* ================= /WITHDRAW ================= */
+
 bot.onText(
 /\/withdraw (.+)/,
 async (msg, match) => {
 
-  const id =
+  const chatId =
     String(msg.chat.id);
 
   const amount =
@@ -263,7 +724,7 @@ async (msg, match) => {
 
   const user =
     await User.findOne({
-      userId: id
+      userId: chatId
     });
 
   if (
@@ -272,9 +733,10 @@ async (msg, match) => {
   ) {
 
     return bot.sendMessage(
-      id,
+      chatId,
       "❌ Not enough balance"
     );
+
   }
 
   user.balance -= amount;
@@ -283,24 +745,32 @@ async (msg, match) => {
 
   bot.sendMessage(
     ADMIN_ID,
-`💸 Withdrawal Request
+`💸 *WITHDRAW REQUEST*
 
-👤 User: ${id}
-💰 Amount: ${amount}`
-  );
+👤 User: ${chatId}
+
+💰 Amount: ${amount} coins`,
+{
+  parse_mode: "Markdown"
+});
 
   bot.sendMessage(
-    id,
-    "⏳ Withdrawal sent to admin"
+    chatId,
+    "⏳ Withdraw request sent"
   );
+
 });
 
 /* ================= API ================= */
-app.get("/user/:id", async (req, res) => {
+
+app.get(
+"/user/:id",
+async (req, res) => {
 
   const user =
     await User.findOne({
-      userId: req.params.id
+      userId:
+        req.params.id
     });
 
   if (!user) {
@@ -308,19 +778,29 @@ app.get("/user/:id", async (req, res) => {
     return res.json({
       ok: false
     });
+
   }
 
   res.json({
+
     ok: true,
-    balance: user.balance,
-    refs: user.refs
+
+    balance:
+      user.balance,
+
+    refs:
+      user.refs
+
   });
+
 });
 
 /* ================= SERVER ================= */
+
 app.listen(PORT, () => {
 
   console.log(
     `🚀 Server running on ${PORT}`
   );
+
 });
