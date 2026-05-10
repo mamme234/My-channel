@@ -536,8 +536,8 @@ async (msg, match) => {
       inline_keyboard: [
         [
           {
-            text: "🚀 Open App",
-            url: MINI_APP
+            text: "🤖 Start Bot",
+            url: `https://t.me/${BOT_USERNAME}`
           }
         ]
       ]
