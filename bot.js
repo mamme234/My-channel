@@ -1,54 +1,63 @@
-require("dotenv").config();
-
 const TelegramBot = require("node-telegram-bot-api");
 const express = require("express");
 const mongoose = require("mongoose");
 
-/* ================= CONFIG ================= */
-const token = process.env.BOT_TOKEN;
-const mongo = process.env.MONGO_URL;
-const PORT = process.env.PORT || 3000;
+/* =======================
+   CONFIG (ALL IN FILE)
+======================= */
+const BOT_TOKEN = "YOUR_BOT_TOKEN";
+const MONGO_URL = "YOUR_MONGO_URL";
+const PORT = 3000;
 
-if (!token || !mongo) {
-  console.log("❌ Missing env variables");
+const ADMIN_ID = 7154361039;
+const BOT_USERNAME = "Studybuddy_2025Bot";
+const CHANNEL = "@gangs234";
+const MINI_APP = "https://myapp1-khaki.vercel.app/";
+
+/* =======================
+   CHECK CONFIG
+======================= */
+if (!BOT_TOKEN || !MONGO_URL) {
+  console.log("❌ Missing token or DB URL");
   process.exit(1);
 }
 
-/* ================= MONGODB ================= */
-mongoose.connect(mongo)
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch(err => console.log("❌ Mongo Error:", err));
+/* =======================
+   DB CONNECT
+======================= */
+mongoose.connect(MONGO_URL)
+  .then(() => console.log("✅ DB Connected"))
+  .catch(console.log);
 
+/* =======================
+   USER MODEL
+======================= */
 const User = mongoose.model("User", {
   userId: String,
   balance: { type: Number, default: 0 },
   refs: { type: Number, default: 0 },
-  referredBy: { type: String, default: null }
+  referredBy: { type: String, default: null },
+  joinTime: { type: Number, default: Date.now }
 });
 
-/* ================= BOT ================= */
-const bot = new TelegramBot(token, {
-  polling: {
-    autoStart: true,
-    interval: 1000
-  }
-});
+/* =======================
+   BOT + SERVER
+======================= */
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
-const BOT_USERNAME = "Studybuddy_2025Bot";
-const ADMIN_ID = 7154361039;
-const CHANNEL = "@gangs234";
-const MINI_APP = "https://myapp1-khaki.vercel.app/";
-
-/* ================= EXPRESS ================= */
 const app = express();
 app.use(express.json());
 
-/* ================= HELPERS ================= */
-function getRefLink(id) {
+/* =======================
+   HELPERS
+======================= */
+function refLink(id) {
   return `https://t.me/${BOT_USERNAME}?start=ref${id}`;
 }
 
-/* ================= CHANNEL CHECK ================= */
+/* =======================
+   CHANNEL CHECK
+======================= */
 async function isMember(id) {
   try {
     const res = await bot.getChatMember(CHANNEL, id);
@@ -58,7 +67,9 @@ async function isMember(id) {
   }
 }
 
-/* ================= START ================= */
+/* =======================
+   START COMMAND
+======================= */
 bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
 
   const chatId = String(msg.chat.id);
@@ -93,7 +104,6 @@ bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
       const refUser = await User.findOne({ userId: refId });
 
       if (refUser) {
-
         user.referredBy = refId;
 
         refUser.refs += 1;
@@ -102,12 +112,12 @@ bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
         await user.save();
         await refUser.save();
 
-        bot.sendMessage(refId, "🎉 +10 coins from referral!");
+        bot.sendMessage(refId, "🎉 +10 coins referral reward!");
       }
     }
   }
 
-  const link = getRefLink(chatId);
+  const link = refLink(chatId);
 
   bot.sendMessage(chatId,
 `🔥 WELCOME
@@ -115,8 +125,7 @@ bot.onText(/\/start(?: (.+))?/, async (msg, match) => {
 💰 Balance: ${user.balance}
 👥 Referrals: ${user.refs}
 
-🔗 Referral Link:
-${link}`,
+🔗 ${link}`,
 {
   reply_markup: {
     inline_keyboard: [
@@ -128,7 +137,9 @@ ${link}`,
 
 });
 
-/* ================= BALANCE ================= */
+/* =======================
+   BALANCE
+======================= */
 bot.onText(/\/balance/, async (msg) => {
 
   const user = await User.findOne({ userId: String(msg.chat.id) });
@@ -137,7 +148,9 @@ bot.onText(/\/balance/, async (msg) => {
 `💰 Balance: ${user?.balance || 0}`);
 });
 
-/* ================= TOP USERS ================= */
+/* =======================
+   TOP USERS
+======================= */
 bot.onText(/\/top/, async (msg) => {
 
   const top = await User.find()
@@ -147,13 +160,15 @@ bot.onText(/\/top/, async (msg) => {
   let text = "🏆 TOP USERS\n\n";
 
   top.forEach((u, i) => {
-    text += `${i + 1}. ${u.userId} - ${u.balance} 💰\n`;
+    text += `${i + 1}. ${u.userId} - ${u.balance}\n`;
   });
 
   bot.sendMessage(msg.chat.id, text);
 });
 
-/* ================= WITHDRAW ================= */
+/* =======================
+   WITHDRAW
+======================= */
 bot.onText(/\/withdraw (.+)/, async (msg, match) => {
 
   const id = String(msg.chat.id);
@@ -169,14 +184,16 @@ bot.onText(/\/withdraw (.+)/, async (msg, match) => {
   await user.save();
 
   bot.sendMessage(ADMIN_ID,
-`💸 Withdraw Request
+`💸 Withdraw
 User: ${id}
 Amount: ${amount}`);
 
   bot.sendMessage(id, "⏳ Sent to admin");
 });
 
-/* ================= API FOR VERCEL ================= */
+/* =======================
+   API FOR VERCEL APP
+======================= */
 app.get("/user/:id", async (req, res) => {
 
   const user = await User.findOne({ userId: req.params.id });
@@ -188,9 +205,12 @@ app.get("/user/:id", async (req, res) => {
     balance: user.balance,
     refs: user.refs
   });
+
 });
 
-/* ================= SERVER ================= */
+/* =======================
+   SERVER START
+======================= */
 app.listen(PORT, () => {
   console.log("🚀 Server running on", PORT);
 });
