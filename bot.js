@@ -22,6 +22,9 @@ const CHANNEL = "@gangs234";
 
 const GROUP_ID = "-1003984859530";
 
+const VOTE_LINK =
+  "https://oiaward.com/nominees?category=13";
+
 /* ================= INIT ================= */
 
 const bot = new TelegramBot(
@@ -83,7 +86,7 @@ function getRefLink(id) {
 
 }
 
-/* ================= POST TO CHANNEL + GROUP ================= */
+/* ================= POST SYSTEM ================= */
 
 async function postToAll(text) {
 
@@ -198,7 +201,7 @@ async (msg, match) => {
     }
   }
 
-  /* ================= BOT UI ================= */
+  /* ================= PRIVATE BOT UI ================= */
 
   bot.sendMessage(
     id,
@@ -541,16 +544,56 @@ async (msg) => {
 
 🏆 OI Award voting is now open!
 
-❤️ Support your favorite artist by voting below.
+❤️ Support your favorite artist by voting below.`;
 
-🔗 https://oiaward.com/nominees?category=13`;
+  const keyboard = {
 
-  await postToAll(text);
+    inline_keyboard: [
+      [
+        {
+          text: "🗳 Vote Now",
+          url: VOTE_LINK
+        }
+      ]
+    ]
 
-  bot.sendMessage(
-    ADMIN_ID,
-    "✅ Vote post sent"
-  );
+  };
+
+  try {
+
+    await bot.sendMessage(
+      CHANNEL,
+      text,
+      {
+        parse_mode: "Markdown",
+        reply_markup: keyboard
+      }
+    );
+
+    await bot.sendMessage(
+      GROUP_ID,
+      text,
+      {
+        parse_mode: "Markdown",
+        reply_markup: keyboard
+      }
+    );
+
+    bot.sendMessage(
+      ADMIN_ID,
+      "✅ Vote post sent"
+    );
+
+  } catch (err) {
+
+    console.log(err);
+
+    bot.sendMessage(
+      ADMIN_ID,
+      "❌ Failed to send vote post"
+    );
+
+  }
 
 });
 
