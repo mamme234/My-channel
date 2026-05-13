@@ -86,7 +86,7 @@ function getRefLink(id) {
 
 }
 
-/* ================= POST SYSTEM ================= */
+/* ================= NORMAL POST SYSTEM ================= */
 
 async function postToAll(text) {
 
@@ -540,11 +540,13 @@ async (msg) => {
   ) return;
 
   const text =
-`🎤 *VOTE YOUR FAVORITE ARTIST*
+`🎤 *VOTE FOR @raja_music0*
 
 🏆 OI Award voting is now open!
 
-❤️ Support your favorite artist by voting below.`;
+❤️ Support *Raja Music* by voting now.
+
+👇 Tap the button below to vote.`;
 
   const keyboard = {
 
