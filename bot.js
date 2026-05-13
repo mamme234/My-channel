@@ -526,6 +526,34 @@ async (msg) => {
 
 });
 
+/* ================= /VOTE ================= */
+
+bot.onText(
+/\/vote/,
+async (msg) => {
+
+  if (
+    msg.chat.id != ADMIN_ID
+  ) return;
+
+  const text =
+`🎤 *VOTE YOUR FAVORITE ARTIST*
+
+🏆 OI Award voting is now open!
+
+❤️ Support your favorite artist by voting below.
+
+🔗 https://oiaward.com/nominees?category=13`;
+
+  await postToAll(text);
+
+  bot.sendMessage(
+    ADMIN_ID,
+    "✅ Vote post sent"
+  );
+
+});
+
 /* ================= SERVER START ================= */
 
 app.listen(PORT, () => {
