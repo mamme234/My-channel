@@ -18,7 +18,11 @@ const GROUP_ID = "-1003984859530";
 
 const WEB_APP_URL = "https://myapp1-khaki.vercel.app/";
 const VOTE_LINK = "https://oiaward.com/nominees?category=13";
+
+/* ⚠️ IMPORTANT: ONLY ONE VIDEO_ID (FIXED CRASH) */
+
 const VIDEO_ID = "BAACAgQAAxkBAAIDIWoFvgy3nxAurhzCAAGQeSkarazfYwACPh0AAlZPKFDGVoT6CEN3QDsE";
+
 /* ================= INIT ================= */
 
 const bot = new TelegramBot(BOT_TOKEN, {
@@ -70,22 +74,17 @@ async function postToAll(text) {
   }
 }
 
-/* ================= FILE ID CAPTURE (IMPORTANT) ================= */
-/* 👉 SEND ANY VIDEO TO BOT → IT WILL SHOW FILE ID */
+/* ================= FILE ID DEBUG (OPTIONAL) ================= */
 
 bot.on("video", (msg) => {
   const fileId = msg.video.file_id;
 
-  console.log("🎥 VIDEO FILE ID:", fileId);
+  console.log("🎥 FILE ID:", fileId);
 
   bot.sendMessage(msg.chat.id,
-`🎥 FILE ID DETECTED:
+`🎥 FILE ID:
 
-${fileId}
-BAACAgQAAxkBAAIDIWoFvgy3nxAurhzCAAGQeSkarazfYwACPh0AAlZPKFDGVoT6CEN3QDsE
-
-👉 Copy this and use in your /vote system
-👉 Copy this and use in your /vote system`);
+${fileId}`);
 });
 
 /* ================= START ================= */
@@ -181,7 +180,7 @@ bot.onText(/\/ref/, async (msg) => {
 🔗 ${getRefLink(id)}`);
 });
 
-/* ================= ADMIN POSTS ================= */
+/* ================= ADMIN COMMANDS ================= */
 
 bot.onText(/\/post (.+)/, async (msg, match) => {
   if (String(msg.chat.id) !== ADMIN_ID) return;
@@ -220,15 +219,7 @@ bot.onText(/\/active/, async (msg) => {
   bot.sendMessage(ADMIN_ID, "✅ Active posted");
 });
 
-/* ================= VOTE SYSTEM (FIXED) ================= */
-
-/*
-👉 STEP:
-Send video to bot → it will auto show file_id
-Then paste into VIDEO_ID below
-*/
-
-const VIDEO_ID = "PASTE_YOUR_FILE_ID_HERE";
+/* ================= VOTE (FIXED) ================= */
 
 bot.onText(/\/vote/, async (msg) => {
   if (String(msg.chat.id) !== ADMIN_ID) return;
@@ -247,17 +238,19 @@ bot.onText(/\/vote/, async (msg) => {
   try {
     await bot.sendVideo(CHANNEL, VIDEO_ID, {
       caption,
+      parse_mode: "Markdown",
       reply_markup: keyboard
     });
 
     await bot.sendVideo(GROUP_ID, VIDEO_ID, {
       caption,
+      parse_mode: "Markdown",
       reply_markup: keyboard
     });
 
     bot.sendMessage(ADMIN_ID, "✅ Video posted");
   } catch (err) {
-    console.log(err);
+    console.log("ERROR:", err);
     bot.sendMessage(ADMIN_ID, "❌ " + err.message);
   }
 });
