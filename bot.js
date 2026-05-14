@@ -3,6 +3,7 @@ require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
 const express = require("express");
 const mongoose = require("mongoose");
+const fs = require("fs");
 
 /* ================= CONFIG ================= */
 
@@ -42,11 +43,20 @@ app.use(express.json());
 
 mongoose.connect(MONGO_URI)
 .then(() => {
-  console.log("✅ MongoDB Connected");
+
+  console.log(
+    "✅ MongoDB Connected"
+  );
+
 })
 .catch((err) => {
-  console.log("❌ MongoDB Error");
+
+  console.log(
+    "❌ MongoDB Error"
+  );
+
   console.log(err);
+
 });
 
 /* ================= USER MODEL ================= */
@@ -75,7 +85,11 @@ const User = mongoose.model("User", {
 /* ================= SERVER ================= */
 
 app.get("/", (req, res) => {
-  res.send("🚀 Bot Running");
+
+  res.send(
+    "🚀 Bot Running"
+  );
+
 });
 
 /* ================= REF LINK ================= */
@@ -131,6 +145,7 @@ async function postToAll(text) {
     );
 
   }
+
 }
 
 /* ================= START ================= */
@@ -198,7 +213,9 @@ async (msg, match) => {
         );
 
       }
+
     }
+
   }
 
   /* ================= PRIVATE BOT UI ================= */
@@ -529,7 +546,7 @@ async (msg) => {
 
 });
 
-/* ================= /VOTE ================= */
+/* ================= /VOTE VIDEO POST ================= */
 
 bot.onText(
 /\/vote/,
@@ -539,7 +556,7 @@ async (msg) => {
     msg.chat.id != ADMIN_ID
   ) return;
 
-  const text =
+  const caption =
 `🎤 *VOTE FOR @raja_music0*
 
 🏆 OI Award voting is now open!
@@ -563,19 +580,25 @@ async (msg) => {
 
   try {
 
-    await bot.sendMessage(
+    /* ===== CHANNEL ===== */
+
+    await bot.sendVideo(
       CHANNEL,
-      text,
+      fs.createReadStream("./vote.mp4"),
       {
+        caption: caption,
         parse_mode: "Markdown",
         reply_markup: keyboard
       }
     );
 
-    await bot.sendMessage(
+    /* ===== GROUP ===== */
+
+    await bot.sendVideo(
       GROUP_ID,
-      text,
+      fs.createReadStream("./vote.mp4"),
       {
+        caption: caption,
         parse_mode: "Markdown",
         reply_markup: keyboard
       }
@@ -583,7 +606,7 @@ async (msg) => {
 
     bot.sendMessage(
       ADMIN_ID,
-      "✅ Vote post sent"
+      "✅ Vote video posted"
     );
 
   } catch (err) {
@@ -592,7 +615,7 @@ async (msg) => {
 
     bot.sendMessage(
       ADMIN_ID,
-      "❌ Failed to send vote post"
+      "❌ Failed to post vote video"
     );
 
   }
