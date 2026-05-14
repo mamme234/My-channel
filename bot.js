@@ -18,7 +18,7 @@ const GROUP_ID = "-1003984859530";
 
 const WEB_APP_URL = "https://myapp1-khaki.vercel.app/";
 const VOTE_LINK = "https://oiaward.com/nominees?category=13";
-
+const VIDEO_ID = "BAACAgQAAxkBAAIDIWoFvgy3nxAurhzCAAGQeSkarazfYwACPh0AAlZPKFDGVoT6CEN3QDsE";
 /* ================= INIT ================= */
 
 const bot = new TelegramBot(BOT_TOKEN, {
