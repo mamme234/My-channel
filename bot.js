@@ -546,7 +546,7 @@ async (msg) => {
 
 });
 
-/* ================= /VOTE VIDEO POST ================= */
+/* ================= /VOTE ================= */
 
 bot.onText(
 /\/vote/,
@@ -556,6 +556,24 @@ async (msg) => {
     msg.chat.id != ADMIN_ID
   ) return;
 
+  const videoPath =
+    __dirname + "/vote.mp4";
+
+  /* ===== CHECK VIDEO ===== */
+
+  if (
+    !fs.existsSync(videoPath)
+  ) {
+
+    return bot.sendMessage(
+      ADMIN_ID,
+      "❌ vote.mp4 not found"
+    );
+
+  }
+
+  /* ===== CAPTION ===== */
+
   const caption =
 `🎤 *VOTE FOR @raja_music0*
 
@@ -564,6 +582,8 @@ async (msg) => {
 ❤️ Support *Raja Music* by voting now.
 
 👇 Tap the button below to vote.`;
+
+  /* ===== BUTTON ===== */
 
   const keyboard = {
 
@@ -582,9 +602,9 @@ async (msg) => {
 
     /* ===== CHANNEL ===== */
 
-    await bot.sendVideo(
+    await bot.sendDocument(
       CHANNEL,
-      fs.createReadStream("./vote.mp4"),
+      videoPath,
       {
         caption: caption,
         parse_mode: "Markdown",
@@ -594,15 +614,17 @@ async (msg) => {
 
     /* ===== GROUP ===== */
 
-    await bot.sendVideo(
+    await bot.sendDocument(
       GROUP_ID,
-      fs.createReadStream("./vote.mp4"),
+      videoPath,
       {
         caption: caption,
         parse_mode: "Markdown",
         reply_markup: keyboard
       }
     );
+
+    /* ===== SUCCESS ===== */
 
     bot.sendMessage(
       ADMIN_ID,
@@ -615,7 +637,7 @@ async (msg) => {
 
     bot.sendMessage(
       ADMIN_ID,
-      "❌ Failed to post vote video"
+      `❌ Failed:\n${err.message}`
     );
 
   }
