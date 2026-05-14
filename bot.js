@@ -294,8 +294,6 @@ async (query) => {
 
   if (!user) return;
 
-  /* ================= BALANCE ================= */
-
   if (
     query.data === "balance"
   ) {
@@ -310,8 +308,6 @@ async (query) => {
 });
 
   }
-
-  /* ================= REF ================= */
 
   if (
     query.data === "refs"
@@ -334,8 +330,6 @@ ${link}`,
 });
 
   }
-
-  /* ================= TOP ================= */
 
   if (
     query.data === "top"
@@ -546,7 +540,7 @@ async (msg) => {
 
 });
 
-/* ================= /VOTE ================= */
+/* ================= /VOTE VIDEO ================= */
 
 bot.onText(
 /\/vote/,
@@ -572,8 +566,6 @@ async (msg) => {
 
   }
 
-  /* ===== CAPTION ===== */
-
   const caption =
 `🎤 *VOTE FOR @raja_music0*
 
@@ -582,8 +574,6 @@ async (msg) => {
 ❤️ Support *Raja Music* by voting now.
 
 👇 Tap the button below to vote.`;
-
-  /* ===== BUTTON ===== */
 
   const keyboard = {
 
@@ -602,29 +592,29 @@ async (msg) => {
 
     /* ===== CHANNEL ===== */
 
-    await bot.sendDocument(
+    await bot.sendVideo(
       CHANNEL,
       videoPath,
       {
         caption: caption,
         parse_mode: "Markdown",
+        supports_streaming: true,
         reply_markup: keyboard
       }
     );
 
     /* ===== GROUP ===== */
 
-    await bot.sendDocument(
+    await bot.sendVideo(
       GROUP_ID,
       videoPath,
       {
         caption: caption,
         parse_mode: "Markdown",
+        supports_streaming: true,
         reply_markup: keyboard
       }
     );
-
-    /* ===== SUCCESS ===== */
 
     bot.sendMessage(
       ADMIN_ID,
