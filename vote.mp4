@@ -1,0 +1,95 @@
+bot.onText(
+/\/vote/,
+async (msg) => {
+
+  if (
+    msg.chat.id != ADMIN_ID
+  ) return;
+
+  const videoPath =
+    __dirname + "/vote.mp4";
+
+  /* ===== CHECK VIDEO ===== */
+
+  if (
+    !fs.existsSync(videoPath)
+  ) {
+
+    return bot.sendMessage(
+      ADMIN_ID,
+      "❌ vote.mp4 not found"
+    );
+
+  }
+
+  /* ===== CAPTION ===== */
+
+  const caption =
+`🎤 *VOTE FOR @raja_music0*
+
+🏆 OI Award voting is now open!
+
+❤️ Support *Raja Music* by voting now.
+
+👇 Tap the button below to vote.`;
+
+  /* ===== BUTTON ===== */
+
+  const keyboard = {
+
+    inline_keyboard: [
+      [
+        {
+          text: "🗳 Vote Now",
+          url: "https://oiaward.com/nominees?category=13"
+        }
+      ]
+    ]
+
+  };
+
+  try {
+
+    /* ===== CHANNEL POST ===== */
+
+    await bot.sendVideo(
+      CHANNEL,
+      videoPath,
+      {
+        caption: caption,
+        parse_mode: "Markdown",
+        reply_markup: keyboard
+      }
+    );
+
+    /* ===== GROUP POST ===== */
+
+    await bot.sendVideo(
+      GROUP_ID,
+      videoPath,
+      {
+        caption: caption,
+        parse_mode: "Markdown",
+        reply_markup: keyboard
+      }
+    );
+
+    /* ===== SUCCESS ===== */
+
+    bot.sendMessage(
+      ADMIN_ID,
+      "✅ Vote video posted"
+    );
+
+  } catch (err) {
+
+    console.log(err);
+
+    bot.sendMessage(
+      ADMIN_ID,
+      `❌ Failed:\n${err.message}`
+    );
+
+  }
+
+});
