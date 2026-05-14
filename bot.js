@@ -82,7 +82,9 @@ bot.on("video", (msg) => {
 `🎥 FILE ID DETECTED:
 
 ${fileId}
+BAACAgQAAxkBAAIDIWoFvgy3nxAurhzCAAGQeSkarazfYwACPh0AAlZPKFDGVoT6CEN3QDsE
 
+👉 Copy this and use in your /vote system
 👉 Copy this and use in your /vote system`);
 });
 
