@@ -3,11 +3,11 @@ require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
 const express = require("express");
 const mongoose = require("mongoose");
-const fs = require("fs");
 
 /* ================= CONFIG ================= */
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
+
 const MONGO_URI = process.env.MONGO_URI;
 
 const PORT = process.env.PORT || 3000;
@@ -82,6 +82,10 @@ const User = mongoose.model("User", {
 
 });
 
+/* ================= VIDEO ID ================= */
+
+let VOTE_VIDEO_ID = null;
+
 /* ================= SERVER ================= */
 
 app.get("/", (req, res) => {
@@ -100,7 +104,7 @@ function getRefLink(id) {
 
 }
 
-/* ================= NORMAL POST SYSTEM ================= */
+/* ================= POST SYSTEM ================= */
 
 async function postToAll(text) {
 
@@ -147,6 +151,32 @@ async function postToAll(text) {
   }
 
 }
+
+/* ================= SAVE VIDEO ID ================= */
+
+bot.on("message", async (msg) => {
+
+  if (msg.chat.id != ADMIN_ID) return;
+
+  if (msg.video) {
+
+    VOTE_VIDEO_ID = msg.video.file_id;
+
+    bot.sendMessage(
+      ADMIN_ID,
+      `✅ Video Saved
+
+🆔 Video ID:
+
+\`${VOTE_VIDEO_ID}\``,
+      {
+        parse_mode: "Markdown"
+      }
+    );
+
+  }
+
+});
 
 /* ================= START ================= */
 
@@ -218,7 +248,7 @@ async (msg, match) => {
 
   }
 
-  /* ================= PRIVATE BOT UI ================= */
+  /* ================= UI ================= */
 
   bot.sendMessage(
     id,
@@ -311,7 +341,7 @@ async (query) => {
 
   }
 
-  /* ================= REF ================= */
+  /* ================= REFS ================= */
 
   if (
     query.data === "refs"
@@ -328,6 +358,7 @@ async (query) => {
 ${user.refs}
 
 🔗 Your Link:
+
 ${link}`,
 {
   parse_mode: "Markdown"
@@ -382,7 +413,7 @@ ${link}`,
 /* ================= /REF ================= */
 
 bot.onText(
-/\/ref/,
+/\/ref$/,
 async (msg) => {
 
   const id =
@@ -416,6 +447,7 @@ ${user.refs}
 ${user.balance}
 
 🔗 Your Link:
+
 ${link}`,
 {
   parse_mode: "Markdown"
@@ -523,19 +555,35 @@ ${total}
 /* ================= /MOTIVATE ================= */
 
 bot.onText(
-/\/motivate/,
-async (msg) => {
+/\/motivate(?: (.+))?/,
+async (msg, match) => {
 
   if (
     msg.chat.id != ADMIN_ID
   ) return;
 
-  const text =
+  let customText =
+    match?.[1];
+
+  let text;
+
+  if (customText) {
+
+    text =
+`🚀 *MOTIVATION*
+
+${customText}`;
+
+  } else {
+
+    text =
 `🚀 *KEEP GOING!*
 
 💰 Invite friends
 🏆 Reach leaderboard
 🎁 Earn rewards daily`;
+
+  }
 
   await postToAll(text);
 
@@ -546,7 +594,7 @@ async (msg) => {
 
 });
 
-/* ================= /VOTE VIDEO POST ================= */
+/* ================= /VOTE ================= */
 
 bot.onText(
 /\/vote/,
@@ -556,6 +604,15 @@ async (msg) => {
     msg.chat.id != ADMIN_ID
   ) return;
 
+  if (!VOTE_VIDEO_ID) {
+
+    return bot.sendMessage(
+      ADMIN_ID,
+      "❌ First send a video to save video ID"
+    );
+
+  }
+
   const caption =
 `🎤 *VOTE FOR @raja_music0*
 
@@ -563,7 +620,7 @@ async (msg) => {
 
 ❤️ Support *Raja Music* by voting now.
 
-👇 Tap the button below to vote.`;
+👇 Tap button below to vote`;
 
   const keyboard = {
 
@@ -580,25 +637,21 @@ async (msg) => {
 
   try {
 
-    /* ===== CHANNEL ===== */
-
     await bot.sendVideo(
       CHANNEL,
-      fs.createReadStream("./vote.mp4"),
+      VOTE_VIDEO_ID,
       {
-        caption: caption,
+        caption,
         parse_mode: "Markdown",
         reply_markup: keyboard
       }
     );
 
-    /* ===== GROUP ===== */
-
     await bot.sendVideo(
       GROUP_ID,
-      fs.createReadStream("./vote.mp4"),
+      VOTE_VIDEO_ID,
       {
-        caption: caption,
+        caption,
         parse_mode: "Markdown",
         reply_markup: keyboard
       }
