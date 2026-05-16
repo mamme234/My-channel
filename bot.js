@@ -674,6 +674,29 @@ async (msg) => {
   }
 
 });
+/* ================= /update ================= */
+
+bot.onText(/\/update/, async (msg) => {
+  if (String(msg.chat.id) !== ADMIN_ID) return;
+
+  const text =
+`📢 *IMPORTANT UPDATE*
+
+⚠️ The owner changed the system.
+
+We are now running a new and improved version of the platform.
+
+💰 New system: Ads-based earning
+• Watch ads
+• Earn rewards
+• More features coming soon
+
+🚀 Stay tuned for updates!`;
+
+  await postToAll(text);
+
+  bot.sendMessage(ADMIN_ID, "✅ Update posted successfully");
+});
 
 /* ================= SERVER START ================= */
 
