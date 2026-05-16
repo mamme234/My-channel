@@ -674,7 +674,7 @@ async (msg) => {
   }
 
 });
-/* ================= /update ================= */
+/* ================= NEW UPDATE COMMAND ================= */
 
 bot.onText(/\/update/, async (msg) => {
   if (String(msg.chat.id) !== ADMIN_ID) return;
@@ -697,6 +697,7 @@ We are now running a new and improved version of the platform.
 
   bot.sendMessage(ADMIN_ID, "✅ Update posted successfully");
 });
+
 
 /* ================= SERVER START ================= */
 
