@@ -88,7 +88,8 @@ const User = mongoose.model("User", {
 
 /* ================= VIDEO ================= */
 
-let VOTE_VIDEO_ID = null;
+let VOTE_VIDEO_ID =
+"BAACAgQAAxkBAAIDIWoFvgy3nxAurhzCAAGQeSkarazfYwACPh0AAlZPKFDGVoT6CEN3QDsE";
 
 /* ================= SERVER ================= */
 
@@ -128,7 +129,7 @@ async function checkJoin(userId) {
 
 function getRefLink(id) {
 
-  return `https://t.me/${BOT_USERNAME}?start=ref${id}`;
+  return `https://t.me/${BOT_USERNAME}?start=ref_${id}`;
 
 }
 
@@ -179,34 +180,6 @@ async function postToAll(text) {
   }
 
 }
-
-/* ================= SAVE VIDEO ================= */
-
-bot.on("message", async (msg) => {
-
-  if (
-    String(msg.chat.id) !== ADMIN_ID
-  ) return;
-
-  if (msg.video) {
-
-    VOTE_VIDEO_ID =
-      msg.video.file_id;
-
-    bot.sendMessage(
-      ADMIN_ID,
-`✅ Video Saved
-
-🆔 Video ID:
-
-\`${VOTE_VIDEO_ID}\``,
-{
-  parse_mode: "Markdown"
-});
-
-  }
-
-});
 
 /* ================= START ================= */
 
@@ -275,11 +248,11 @@ async (msg, match) => {
 
   if (
     param &&
-    param.startsWith("ref")
+    param.startsWith("ref_")
   ) {
 
     const refId =
-      param.replace("ref", "");
+      param.replace("ref_", "");
 
     if (
       refId !== id &&
@@ -551,7 +524,7 @@ ${getRefLink(id)}`,
 /* ================= /BALANCE ================= */
 
 bot.onText(
-/\/balance/,
+/^\/balance$/,
 async (msg) => {
 
   const id =
@@ -575,8 +548,7 @@ async (msg) => {
     id,
 `💰 *YOUR BALANCE*
 
-🪙 Balance:
-${user.balance} coins`,
+🪙 ${user.balance} coins`,
 {
   parse_mode: "Markdown"
 });
@@ -586,7 +558,7 @@ ${user.balance} coins`,
 /* ================= /REF ================= */
 
 bot.onText(
-/\/ref/,
+/^\/ref$/,
 async (msg) => {
 
   const id =
@@ -606,19 +578,22 @@ async (msg) => {
 
   }
 
+  const link =
+    getRefLink(id);
+
   bot.sendMessage(
     id,
 `👥 *REFERRAL SYSTEM*
 
-👥 Referrals:
+👥 Total Referrals:
 ${user.refs}
 
 💰 Balance:
 ${user.balance}
 
-🔗 Your Link:
+🔗 Your Referral Link:
 
-${getRefLink(id)}`,
+${link}`,
 {
   parse_mode: "Markdown"
 });
@@ -638,6 +613,8 @@ async (msg) => {
     await User.findOne({
       userId: id
     });
+
+  if (!user) return;
 
   const now =
     Date.now();
@@ -683,6 +660,8 @@ async (msg, match) => {
     await User.findOne({
       userId: id
     });
+
+  if (!user) return;
 
   if (amount < 100) {
 
@@ -735,8 +714,7 @@ bot.onText(
 async (msg, match) => {
 
   if (
-    String(msg.chat.id) !==
-    ADMIN_ID
+    String(msg.chat.id) !== ADMIN_ID
   ) return;
 
   await postToAll(
@@ -759,8 +737,7 @@ bot.onText(
 async (msg) => {
 
   if (
-    String(msg.chat.id) !==
-    ADMIN_ID
+    String(msg.chat.id) !== ADMIN_ID
   ) return;
 
   const top =
@@ -801,8 +778,7 @@ bot.onText(
 async (msg) => {
 
   if (
-    String(msg.chat.id) !==
-    ADMIN_ID
+    String(msg.chat.id) !== ADMIN_ID
   ) return;
 
   await postToAll(
@@ -828,8 +804,7 @@ bot.onText(
 async (msg) => {
 
   if (
-    String(msg.chat.id) !==
-    ADMIN_ID
+    String(msg.chat.id) !== ADMIN_ID
   ) return;
 
   await postToAll(
@@ -860,18 +835,8 @@ bot.onText(
 async (msg) => {
 
   if (
-    String(msg.chat.id) !==
-    ADMIN_ID
+    String(msg.chat.id) !== ADMIN_ID
   ) return;
-
-  if (!VOTE_VIDEO_ID) {
-
-    return bot.sendMessage(
-      ADMIN_ID,
-      "❌ Send video first"
-    );
-
-  }
 
   const caption =
 `🎤 *VOTE FOR @raja_music0*
@@ -955,7 +920,7 @@ process.on(
 
 });
 
-/* ================= START ================= */
+/* ================= START SERVER ================= */
 
 app.listen(PORT, () => {
 
