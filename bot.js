@@ -3,16 +3,16 @@ require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
 const express = require("express");
 const mongoose = require("mongoose");
+const cron = require("node-cron");
 
 /* ================= CONFIG ================= */
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-
 const MONGO_URI = process.env.MONGO_URI;
 
 const PORT = process.env.PORT || 3000;
 
-const ADMIN_ID = 7154361039;
+const ADMIN_ID = "7154361039";
 
 const BOT_USERNAME = "Studybuddy_2025Bot";
 
@@ -44,17 +44,12 @@ app.use(express.json());
 mongoose.connect(MONGO_URI)
 .then(() => {
 
-  console.log(
-    "✅ MongoDB Connected"
-  );
+  console.log("✅ MongoDB Connected");
 
 })
 .catch((err) => {
 
-  console.log(
-    "❌ MongoDB Error"
-  );
-
+  console.log("❌ MongoDB Error");
   console.log(err);
 
 });
@@ -78,6 +73,16 @@ const User = mongoose.model("User", {
   referredBy: {
     type: String,
     default: null
+  },
+
+  lastBonus: {
+    type: Number,
+    default: 0
+  },
+
+  lastReward: {
+    type: Number,
+    default: 0
   }
 
 });
@@ -90,11 +95,35 @@ let VOTE_VIDEO_ID = null;
 
 app.get("/", (req, res) => {
 
-  res.send(
-    "🚀 Bot Running"
-  );
+  res.send("🚀 Bot Running");
 
 });
+
+/* ================= FORCE JOIN ================= */
+
+async function checkJoin(userId) {
+
+  try {
+
+    const member =
+      await bot.getChatMember(
+        CHANNEL,
+        userId
+      );
+
+    return (
+      member.status === "member" ||
+      member.status === "administrator" ||
+      member.status === "creator"
+    );
+
+  } catch {
+
+    return false;
+
+  }
+
+}
 
 /* ================= REF LINK ================= */
 
@@ -156,23 +185,25 @@ async function postToAll(text) {
 
 bot.on("message", async (msg) => {
 
-  if (msg.chat.id != ADMIN_ID) return;
+  if (
+    String(msg.chat.id) !== ADMIN_ID
+  ) return;
 
   if (msg.video) {
 
-    VOTE_VIDEO_ID = msg.video.file_id;
+    VOTE_VIDEO_ID =
+      msg.video.file_id;
 
     bot.sendMessage(
       ADMIN_ID,
-      `✅ Video Saved
+`✅ Video Saved
 
 🆔 Video ID:
 
 \`${VOTE_VIDEO_ID}\``,
-      {
-        parse_mode: "Markdown"
-      }
-    );
+{
+  parse_mode: "Markdown"
+});
 
   }
 
@@ -189,6 +220,43 @@ async (msg, match) => {
 
   const param =
     match?.[1];
+
+  /* ===== FORCE JOIN ===== */
+
+  const joined =
+    await checkJoin(id);
+
+  if (!joined) {
+
+    return bot.sendMessage(
+      id,
+`📢 Join our channel first to use the bot.`,
+{
+  reply_markup: {
+
+    inline_keyboard: [
+
+      [
+        {
+          text: "📢 Join Channel",
+          url: "https://t.me/gangs234"
+        }
+      ],
+
+      [
+        {
+          text: "✅ Check Join",
+          callback_data: "check_join"
+        }
+      ]
+
+    ]
+
+  }
+
+});
+
+  }
 
   let user =
     await User.findOne({
@@ -295,6 +363,13 @@ Choose option below 👇`,
 
       [
         {
+          text: "🎁 Daily Bonus",
+          callback_data: "bonus"
+        }
+      ],
+
+      [
+        {
           text: "📢 Join Channel",
           url: "https://t.me/gangs234"
         }
@@ -324,13 +399,48 @@ async (query) => {
 
   if (!user) return;
 
-  /* ================= BALANCE ================= */
+  /* ===== CHECK JOIN ===== */
+
+  if (
+    query.data === "check_join"
+  ) {
+
+    const joined =
+      await checkJoin(id);
+
+    if (!joined) {
+
+      return bot.answerCallbackQuery(
+        query.id,
+        {
+          text: "❌ You still haven't joined",
+          show_alert: true
+        }
+      );
+
+    }
+
+    bot.answerCallbackQuery(
+      query.id,
+      {
+        text: "✅ Joined successfully"
+      }
+    );
+
+    return bot.sendMessage(
+      id,
+      "🚀 Now send /start"
+    );
+
+  }
+
+  /* ===== BALANCE ===== */
 
   if (
     query.data === "balance"
   ) {
 
-    bot.sendMessage(
+    return bot.sendMessage(
       id,
 `💰 *YOUR BALANCE*
 
@@ -341,7 +451,7 @@ async (query) => {
 
   }
 
-  /* ================= REFS ================= */
+  /* ===== REFS ===== */
 
   if (
     query.data === "refs"
@@ -350,7 +460,7 @@ async (query) => {
     const link =
       getRefLink(id);
 
-    bot.sendMessage(
+    return bot.sendMessage(
       id,
 `👥 *YOUR REFERRALS*
 
@@ -366,7 +476,41 @@ ${link}`,
 
   }
 
-  /* ================= TOP ================= */
+  /* ===== BONUS ===== */
+
+  if (
+    query.data === "bonus"
+  ) {
+
+    const now =
+      Date.now();
+
+    if (
+      now - user.lastBonus <
+      86400000
+    ) {
+
+      return bot.sendMessage(
+        id,
+        "⏳ You already claimed today's bonus"
+      );
+
+    }
+
+    user.balance += 50;
+
+    user.lastBonus = now;
+
+    await user.save();
+
+    return bot.sendMessage(
+      id,
+      "🎁 Daily bonus claimed: +50 coins"
+    );
+
+  }
+
+  /* ===== TOP ===== */
 
   if (
     query.data === "top"
@@ -394,7 +538,7 @@ ${link}`,
 
     });
 
-    bot.sendMessage(
+    return bot.sendMessage(
       id,
       text,
       {
@@ -410,10 +554,113 @@ ${link}`,
 
 });
 
+/* ================= /REWARD ================= */
+
+bot.onText(
+/\/reward/,
+async (msg) => {
+
+  const id =
+    String(msg.chat.id);
+
+  const user =
+    await User.findOne({
+      userId: id
+    });
+
+  const now =
+    Date.now();
+
+  if (
+    now - user.lastReward <
+    30000
+  ) {
+
+    return bot.sendMessage(
+      id,
+      "⏳ Wait 30 seconds before next reward"
+    );
+
+  }
+
+  user.balance += 5;
+
+  user.lastReward = now;
+
+  await user.save();
+
+  bot.sendMessage(
+    id,
+    "💰 +5 coins added"
+  );
+
+});
+
+/* ================= /WITHDRAW ================= */
+
+bot.onText(
+/\/withdraw (.+)/,
+async (msg, match) => {
+
+  const id =
+    String(msg.chat.id);
+
+  const amount =
+    Number(match[1]);
+
+  const user =
+    await User.findOne({
+      userId: id
+    });
+
+  if (amount < 100) {
+
+    return bot.sendMessage(
+      id,
+      "❌ Minimum withdraw is 100"
+    );
+
+  }
+
+  if (
+    user.balance < amount
+  ) {
+
+    return bot.sendMessage(
+      id,
+      "❌ Not enough balance"
+    );
+
+  }
+
+  user.balance -= amount;
+
+  await user.save();
+
+  bot.sendMessage(
+    ADMIN_ID,
+`💸 *NEW WITHDRAW REQUEST*
+
+👤 User:
+${id}
+
+💰 Amount:
+${amount}`,
+{
+  parse_mode: "Markdown"
+});
+
+  bot.sendMessage(
+    id,
+    "✅ Withdraw request submitted"
+  );
+
+});
+
 /* ================= /REF ================= */
 
 bot.onText(
-/\/ref$/,
+/\/ref/,
 async (msg) => {
 
   const id =
@@ -462,7 +709,8 @@ bot.onText(
 async (msg, match) => {
 
   if (
-    msg.chat.id != ADMIN_ID
+    String(msg.chat.id) !==
+    ADMIN_ID
   ) return;
 
   const text =
@@ -488,7 +736,8 @@ bot.onText(
 async (msg) => {
 
   if (
-    msg.chat.id != ADMIN_ID
+    String(msg.chat.id) !==
+    ADMIN_ID
   ) return;
 
   const top =
@@ -529,21 +778,21 @@ bot.onText(
 async (msg) => {
 
   if (
-    msg.chat.id != ADMIN_ID
+    String(msg.chat.id) !==
+    ADMIN_ID
   ) return;
 
   const total =
     await User.countDocuments();
 
-  const text =
+  await postToAll(
 `🔥 *ACTIVE REPORT*
 
 👥 Total Users:
 ${total}
 
-🚀 System running strong`;
-
-  await postToAll(text);
+🚀 System running strong`
+  );
 
   bot.sendMessage(
     ADMIN_ID,
@@ -552,44 +801,38 @@ ${total}
 
 });
 
-/* ================= /MOTIVATE ================= */
+/* ================= /UPDATE ================= */
 
 bot.onText(
-/\/motivate(?: (.+))?/,
-async (msg, match) => {
+/\/update/,
+async (msg) => {
 
   if (
-    msg.chat.id != ADMIN_ID
+    String(msg.chat.id) !==
+    ADMIN_ID
   ) return;
 
-  let customText =
-    match?.[1];
+  const text =
+`📢 *IMPORTANT UPDATE*
 
-  let text;
+⚠️ The owner changed the system.
 
-  if (customText) {
+We are now running a new and improved version of the platform.
 
-    text =
-`🚀 *MOTIVATION*
+💰 New system:
+Ads-based earning
 
-${customText}`;
+• Watch ads
+• Earn rewards
+• More features coming soon
 
-  } else {
-
-    text =
-`🚀 *KEEP GOING!*
-
-💰 Invite friends
-🏆 Reach leaderboard
-🎁 Earn rewards daily`;
-
-  }
+🚀 Stay tuned for updates!`;
 
   await postToAll(text);
 
   bot.sendMessage(
     ADMIN_ID,
-    "✅ Motivation posted"
+    "✅ Update posted"
   );
 
 });
@@ -601,14 +844,15 @@ bot.onText(
 async (msg) => {
 
   if (
-    msg.chat.id != ADMIN_ID
+    String(msg.chat.id) !==
+    ADMIN_ID
   ) return;
 
   if (!VOTE_VIDEO_ID) {
 
     return bot.sendMessage(
       ADMIN_ID,
-      "❌ First send a video to save video ID"
+      "❌ Send a video first"
     );
 
   }
@@ -616,11 +860,7 @@ async (msg) => {
   const caption =
 `🎤 *VOTE FOR @raja_music0*
 
-🏆 OI Award voting is now open!
-
-❤️ Support *Raja Music* by voting now.
-
-👇 Tap button below to vote`;
+🏆 OI Award voting is open`;
 
   const keyboard = {
 
@@ -659,7 +899,7 @@ async (msg) => {
 
     bot.sendMessage(
       ADMIN_ID,
-      "✅ Vote video posted"
+      "✅ Vote posted"
     );
 
   } catch (err) {
@@ -674,30 +914,62 @@ async (msg) => {
   }
 
 });
-/* ================= NEW UPDATE COMMAND ================= */
 
-bot.onText(/\/update/, async (msg) => {
-  if (String(msg.chat.id) !== ADMIN_ID) return;
+/* ================= AUTO LEADERBOARD ================= */
 
-  const text =
-`📢 *IMPORTANT UPDATE*
+cron.schedule(
+"0 */6 * * *",
+async () => {
 
-⚠️ The owner changed the system.
+  const top =
+    await User.find()
+    .sort({
+      balance: -1
+    })
+    .limit(10);
 
-We are now running a new and improved version of the platform.
+  let text =
+`🏆 *AUTO LEADERBOARD*
 
-💰 New system: Ads-based earning
-• Watch ads
-• Earn rewards
-• More features coming soon
+`;
 
-🚀 Stay tuned for updates!`;
+  top.forEach((u, i) => {
+
+    text +=
+`${i + 1}. ${u.userId}
+💰 ${u.balance}
+
+`;
+
+  });
 
   await postToAll(text);
 
-  bot.sendMessage(ADMIN_ID, "✅ Update posted successfully");
 });
 
+/* ================= ERROR HANDLER ================= */
+
+process.on(
+"uncaughtException",
+(err) => {
+
+  console.log(
+    "❌ ERROR:",
+    err
+  );
+
+});
+
+process.on(
+"unhandledRejection",
+(err) => {
+
+  console.log(
+    "❌ PROMISE ERROR:",
+    err
+  );
+
+});
 
 /* ================= SERVER START ================= */
 
