@@ -3,7 +3,6 @@ require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
 const express = require("express");
 const mongoose = require("mongoose");
-const cron = require("node-cron");
 
 /* ================= CONFIG ================= */
 
@@ -87,7 +86,7 @@ const User = mongoose.model("User", {
 
 });
 
-/* ================= VIDEO ID ================= */
+/* ================= VIDEO ================= */
 
 let VOTE_VIDEO_ID = null;
 
@@ -181,7 +180,7 @@ async function postToAll(text) {
 
 }
 
-/* ================= SAVE VIDEO ID ================= */
+/* ================= SAVE VIDEO ================= */
 
 bot.on("message", async (msg) => {
 
@@ -230,7 +229,7 @@ async (msg, match) => {
 
     return bot.sendMessage(
       id,
-`📢 Join our channel first to use the bot.`,
+`📢 Join our channel first.`,
 {
   reply_markup: {
 
@@ -272,7 +271,7 @@ async (msg, match) => {
 
   }
 
-  /* ================= REFERRAL ================= */
+  /* ===== REFERRAL ===== */
 
   if (
     param &&
@@ -316,7 +315,7 @@ async (msg, match) => {
 
   }
 
-  /* ================= UI ================= */
+  /* ===== MAIN UI ===== */
 
   bot.sendMessage(
     id,
@@ -356,15 +355,13 @@ Choose option below 👇`,
 
       [
         {
-          text: "🏆 Top Users",
-          callback_data: "top"
-        }
-      ],
-
-      [
-        {
           text: "🎁 Daily Bonus",
           callback_data: "bonus"
+        },
+
+        {
+          text: "🏆 Top Users",
+          callback_data: "top"
         }
       ],
 
@@ -429,7 +426,7 @@ async (query) => {
 
     return bot.sendMessage(
       id,
-      "🚀 Now send /start"
+      "🚀 Send /start"
     );
 
   }
@@ -457,19 +454,16 @@ async (query) => {
     query.data === "refs"
   ) {
 
-    const link =
-      getRefLink(id);
-
     return bot.sendMessage(
       id,
 `👥 *YOUR REFERRALS*
 
-👥 Total Referrals:
+👥 Referrals:
 ${user.refs}
 
-🔗 Your Link:
+🔗 Link:
 
-${link}`,
+${getRefLink(id)}`,
 {
   parse_mode: "Markdown"
 });
@@ -492,7 +486,7 @@ ${link}`,
 
       return bot.sendMessage(
         id,
-        "⏳ You already claimed today's bonus"
+        "⏳ Bonus already claimed today"
       );
 
     }
@@ -505,7 +499,7 @@ ${link}`,
 
     return bot.sendMessage(
       id,
-      "🎁 Daily bonus claimed: +50 coins"
+      "🎁 +50 bonus added"
     );
 
   }
@@ -532,7 +526,7 @@ ${link}`,
 
       text +=
 `${i + 1}. ${u.userId}
-💰 ${u.balance} coins
+💰 ${u.balance}
 
 `;
 
@@ -551,6 +545,83 @@ ${link}`,
   bot.answerCallbackQuery(
     query.id
   ).catch(() => {});
+
+});
+
+/* ================= /BALANCE ================= */
+
+bot.onText(
+/\/balance/,
+async (msg) => {
+
+  const id =
+    String(msg.chat.id);
+
+  let user =
+    await User.findOne({
+      userId: id
+    });
+
+  if (!user) {
+
+    user =
+      await User.create({
+        userId: id
+      });
+
+  }
+
+  bot.sendMessage(
+    id,
+`💰 *YOUR BALANCE*
+
+🪙 Balance:
+${user.balance} coins`,
+{
+  parse_mode: "Markdown"
+});
+
+});
+
+/* ================= /REF ================= */
+
+bot.onText(
+/\/ref/,
+async (msg) => {
+
+  const id =
+    String(msg.chat.id);
+
+  let user =
+    await User.findOne({
+      userId: id
+    });
+
+  if (!user) {
+
+    user =
+      await User.create({
+        userId: id
+      });
+
+  }
+
+  bot.sendMessage(
+    id,
+`👥 *REFERRAL SYSTEM*
+
+👥 Referrals:
+${user.refs}
+
+💰 Balance:
+${user.balance}
+
+🔗 Your Link:
+
+${getRefLink(id)}`,
+{
+  parse_mode: "Markdown"
+});
 
 });
 
@@ -578,7 +649,7 @@ async (msg) => {
 
     return bot.sendMessage(
       id,
-      "⏳ Wait 30 seconds before next reward"
+      "⏳ Wait 30 seconds"
     );
 
   }
@@ -639,7 +710,7 @@ async (msg, match) => {
 
   bot.sendMessage(
     ADMIN_ID,
-`💸 *NEW WITHDRAW REQUEST*
+`💸 *WITHDRAW REQUEST*
 
 👤 User:
 ${id}
@@ -652,53 +723,8 @@ ${amount}`,
 
   bot.sendMessage(
     id,
-    "✅ Withdraw request submitted"
+    "✅ Withdraw request sent"
   );
-
-});
-
-/* ================= /REF ================= */
-
-bot.onText(
-/\/ref/,
-async (msg) => {
-
-  const id =
-    String(msg.chat.id);
-
-  let user =
-    await User.findOne({
-      userId: id
-    });
-
-  if (!user) {
-
-    user =
-      await User.create({
-        userId: id
-      });
-
-  }
-
-  const link =
-    getRefLink(id);
-
-  bot.sendMessage(
-    id,
-`👥 *REFERRAL SYSTEM*
-
-👥 Referrals:
-${user.refs}
-
-💰 Balance:
-${user.balance}
-
-🔗 Your Link:
-
-${link}`,
-{
-  parse_mode: "Markdown"
-});
 
 });
 
@@ -713,18 +739,15 @@ async (msg, match) => {
     ADMIN_ID
   ) return;
 
-  const text =
-    match[1];
-
   await postToAll(
 `📢 *UPDATE*
 
-${text}`
+${match[1]}`
   );
 
   bot.sendMessage(
     ADMIN_ID,
-    "✅ Posted successfully"
+    "✅ Posted"
   );
 
 });
@@ -756,7 +779,7 @@ async (msg) => {
 
     text +=
 `${i + 1}. ${u.userId}
-💰 ${u.balance} coins
+💰 ${u.balance}
 
 `;
 
@@ -771,10 +794,10 @@ async (msg) => {
 
 });
 
-/* ================= /ACTIVE ================= */
+/* ================= /MOTIVATE ================= */
 
 bot.onText(
-/\/active/,
+/\/motivate/,
 async (msg) => {
 
   if (
@@ -782,21 +805,18 @@ async (msg) => {
     ADMIN_ID
   ) return;
 
-  const total =
-    await User.countDocuments();
-
   await postToAll(
-`🔥 *ACTIVE REPORT*
+`🚀 *KEEP GOING!*
 
-👥 Total Users:
-${total}
-
-🚀 System running strong`
+💰 Watch ads
+👥 Invite friends
+🏆 Reach leaderboard
+🎁 Earn rewards daily`
   );
 
   bot.sendMessage(
     ADMIN_ID,
-    "✅ Activity posted"
+    "✅ Motivation posted"
   );
 
 });
@@ -812,23 +832,19 @@ async (msg) => {
     ADMIN_ID
   ) return;
 
-  const text =
+  await postToAll(
 `📢 *IMPORTANT UPDATE*
 
 ⚠️ The owner changed the system.
 
-We are now running a new and improved version of the platform.
-
-💰 New system:
-Ads-based earning
+💰 New ads-based earning system is now active.
 
 • Watch ads
 • Earn rewards
-• More features coming soon
+• More updates coming soon
 
-🚀 Stay tuned for updates!`;
-
-  await postToAll(text);
+🚀 Stay tuned`
+  );
 
   bot.sendMessage(
     ADMIN_ID,
@@ -852,7 +868,7 @@ async (msg) => {
 
     return bot.sendMessage(
       ADMIN_ID,
-      "❌ Send a video first"
+      "❌ Send video first"
     );
 
   }
@@ -908,46 +924,14 @@ async (msg) => {
 
     bot.sendMessage(
       ADMIN_ID,
-      "❌ Failed to post vote video"
+      "❌ Vote failed"
     );
 
   }
 
 });
 
-/* ================= AUTO LEADERBOARD ================= */
-
-cron.schedule(
-"0 */6 * * *",
-async () => {
-
-  const top =
-    await User.find()
-    .sort({
-      balance: -1
-    })
-    .limit(10);
-
-  let text =
-`🏆 *AUTO LEADERBOARD*
-
-`;
-
-  top.forEach((u, i) => {
-
-    text +=
-`${i + 1}. ${u.userId}
-💰 ${u.balance}
-
-`;
-
-  });
-
-  await postToAll(text);
-
-});
-
-/* ================= ERROR HANDLER ================= */
+/* ================= ERRORS ================= */
 
 process.on(
 "uncaughtException",
@@ -971,7 +955,7 @@ process.on(
 
 });
 
-/* ================= SERVER START ================= */
+/* ================= START ================= */
 
 app.listen(PORT, () => {
 
