@@ -3,12 +3,12 @@ require("dotenv").config();
 const TelegramBot = require("node-telegram-bot-api");
 const express = require("express");
 const mongoose = require("mongoose");
+const cors = require("cors");
 
-/* ================= CONFIG ================= */
+// ================= CONFIG =================
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const MONGO_URI = process.env.MONGO_URI;
-
 const PORT = process.env.PORT || 3000;
 
 const ADMIN_ID = "7154361039";
@@ -16,916 +16,815 @@ const ADMIN_ID = "7154361039";
 const BOT_USERNAME = "Studybuddy_2025Bot";
 
 const WEB_APP_URL =
-  "https://myapp1-khaki.vercel.app/";
+"https://myapp1-khaki.vercel.app/";
 
 const CHANNEL = "@gangs234";
 
-const GROUP_ID = "-1003984859530";
-
-const VOTE_LINK =
-  "https://oiaward.com/nominees?category=13";
-
-/* ================= INIT ================= */
+// ================= INIT =================
 
 const bot = new TelegramBot(
-  BOT_TOKEN,
-  {
-    polling: true
-  }
+BOT_TOKEN,
+{
+polling:true
+}
 );
 
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 
-/* ================= DATABASE ================= */
+// ================= DATABASE =================
 
 mongoose.connect(MONGO_URI)
-.then(() => {
 
-  console.log("✅ MongoDB Connected");
+.then(()=>{
+
+console.log("✅ MongoDB Connected");
 
 })
-.catch((err) => {
 
-  console.log("❌ MongoDB Error");
-  console.log(err);
+.catch((err)=>{
 
-});
-
-/* ================= USER MODEL ================= */
-
-const User = mongoose.model("User", {
-
-  userId: String,
-
-  balance: {
-    type: Number,
-    default: 0
-  },
-
-  refs: {
-    type: Number,
-    default: 0
-  },
-
-  referredBy: {
-    type: String,
-    default: null
-  },
-
-  lastBonus: {
-    type: Number,
-    default: 0
-  },
-
-  lastReward: {
-    type: Number,
-    default: 0
-  }
+console.log(err);
 
 });
 
-/* ================= VIDEO ================= */
+// ================= USER MODEL =================
 
-let VOTE_VIDEO_ID =
-"BAACAgQAAxkBAAIDIWoFvgy3nxAurhzCAAGQeSkarazfYwACPh0AAlZPKFDGVoT6CEN3QDsE";
+const User = mongoose.model("User",{
 
-/* ================= SERVER ================= */
+userId:{
+type:String,
+unique:true
+},
 
-app.get("/", (req, res) => {
+username:{
+type:String,
+default:""
+},
 
-  res.send("🚀 Bot Running");
+firstName:{
+type:String,
+default:""
+},
+
+balance:{
+type:Number,
+default:0
+},
+
+refs:{
+type:Number,
+default:0
+},
+
+referredBy:{
+type:String,
+default:null
+},
+
+walletType:{
+type:String,
+default:""
+},
+
+walletAddress:{
+type:String,
+default:""
+},
+
+adsWatched:{
+type:Number,
+default:0
+},
+
+lastBonus:{
+type:Number,
+default:0
+},
+
+lastReward:{
+type:Number,
+default:0
+}
 
 });
 
-/* ================= FORCE JOIN ================= */
+// ================= SERVER =================
 
-async function checkJoin(userId) {
+app.get("/",(req,res)=>{
 
-  try {
+res.send("🚀 Bot + App Running");
 
-    const member =
-      await bot.getChatMember(
-        CHANNEL,
-        userId
-      );
+});
 
-    return (
-      member.status === "member" ||
-      member.status === "administrator" ||
-      member.status === "creator"
-    );
+// ================= PROFILE API =================
 
-  } catch {
+app.get(
+"/profile/:userId/:username/:firstName",
 
-    return false;
+async(req,res)=>{
 
-  }
+try{
 
-}
+const {
+userId,
+username,
+firstName
+} = req.params;
 
-/* ================= REF LINK ================= */
+let user =
+await User.findOne({
+userId
+});
 
-function getRefLink(id) {
+if(!user){
 
-  return `https://t.me/${BOT_USERNAME}?start=ref_${id}`;
+user =
+await User.create({
 
-}
+userId,
+username,
+firstName
 
-/* ================= POST SYSTEM ================= */
+});
 
-async function postToAll(text) {
+}else{
 
-  const keyboard = {
+user.username = username;
+user.firstName = firstName;
 
-    inline_keyboard: [
-      [
-        {
-          text: "🚀 Start Bot",
-          url: `https://t.me/${BOT_USERNAME}`
-        }
-      ]
-    ]
-
-  };
-
-  try {
-
-    await bot.sendMessage(
-      CHANNEL,
-      text,
-      {
-        parse_mode: "Markdown",
-        reply_markup: keyboard
-      }
-    );
-
-    await bot.sendMessage(
-      GROUP_ID,
-      text,
-      {
-        parse_mode: "Markdown",
-        reply_markup: keyboard
-      }
-    );
-
-  } catch (err) {
-
-    console.log(
-      "❌ Post Error:",
-      err.message
-    );
-
-  }
+await user.save();
 
 }
 
-/* ================= START ================= */
+res.json({
+
+success:true,
+
+balance:user.balance,
+
+refs:user.refs,
+
+adsWatched:user.adsWatched,
+
+username:user.username,
+
+firstName:user.firstName
+
+});
+
+}catch(err){
+
+console.log(err);
+
+res.json({
+success:false
+});
+
+}
+
+});
+
+// ================= ADS API =================
+
+app.post("/ads",async(req,res)=>{
+
+try{
+
+const { userId } = req.body;
+
+let user =
+await User.findOne({
+userId
+});
+
+if(!user){
+
+return res.json({
+success:false
+});
+
+}
+
+// REWARD
+
+user.balance += 0.03;
+
+user.adsWatched += 1;
+
+await user.save();
+
+res.json({
+
+success:true,
+
+balance:user.balance,
+
+adsWatched:user.adsWatched
+
+});
+
+}catch(err){
+
+console.log(err);
+
+res.json({
+success:false
+});
+
+}
+
+});
+
+// ================= FORCE JOIN =================
+
+async function checkJoin(userId){
+
+try{
+
+const member =
+await bot.getChatMember(
+CHANNEL,
+userId
+);
+
+return (
+
+member.status === "member" ||
+member.status === "administrator" ||
+member.status === "creator"
+
+);
+
+}catch{
+
+return false;
+
+}
+
+}
+
+// ================= REF LINK =================
+
+function getRefLink(username){
+
+return `https://t.me/${BOT_USERNAME}?start=ref_${username.replace("@","")}`;
+
+}
+
+// ================= START =================
 
 bot.onText(
 /\/start(?: (.+))?/,
-async (msg, match) => {
 
-  const id =
-    String(msg.chat.id);
+async(msg,match)=>{
 
-  const param =
-    match?.[1];
+const id =
+String(msg.chat.id);
 
-  /* ===== FORCE JOIN ===== */
+const username =
+msg.from.username
+? "@"+msg.from.username
+: "@user"+id;
 
-  const joined =
-    await checkJoin(id);
+const firstName =
+msg.from.first_name || "User";
 
-  if (!joined) {
+const param =
+match?.[1];
 
-    return bot.sendMessage(
-      id,
-`📢 Join our channel first.`,
+// FORCE JOIN
+
+const joined =
+await checkJoin(id);
+
+if(!joined){
+
+return bot.sendMessage(
+
+id,
+
+"📢 Join channel first",
+
 {
-  reply_markup: {
+reply_markup:{
+inline_keyboard:[
 
-    inline_keyboard: [
-
-      [
-        {
-          text: "📢 Join Channel",
-          url: "https://t.me/gangs234"
-        }
-      ],
-
-      [
-        {
-          text: "✅ Check Join",
-          callback_data: "check_join"
-        }
-      ]
-
-    ]
-
-  }
-
-});
-
-  }
-
-  let user =
-    await User.findOne({
-      userId: id
-    });
-
-  if (!user) {
-
-    user =
-      await User.create({
-        userId: id
-      });
-
-  }
-
-  /* ===== REFERRAL ===== */
-
-  if (
-    param &&
-    param.startsWith("ref_")
-  ) {
-
-    const refId =
-      param.replace("ref_", "");
-
-    if (
-      refId !== id &&
-      !user.referredBy
-    ) {
-
-      const refUser =
-        await User.findOne({
-          userId: refId
-        });
-
-      if (refUser) {
-
-        user.referredBy =
-          refId;
-
-        refUser.refs += 1;
-
-        refUser.balance += 10;
-
-        await user.save();
-
-        await refUser.save();
-
-        bot.sendMessage(
-          refId,
-          "🎉 New referral joined! +10 coins"
-        );
-
-      }
-
-    }
-
-  }
-
-  /* ===== MAIN UI ===== */
-
-  bot.sendMessage(
-    id,
-`🔥 *WELCOME TO STUDYBUDDY*
-
-💰 Balance: *${user.balance}*
-👥 Referrals: *${user.refs}*
-
-Choose option below 👇`,
+[
 {
-  parse_mode: "Markdown",
+text:"📢 Join Channel",
+url:"https://t.me/gangs234"
+}
+],
 
-  reply_markup: {
-
-    inline_keyboard: [
-
-      [
-        {
-          text: "🚀 Start App",
-          web_app: {
-            url: WEB_APP_URL
-          }
-        }
-      ],
-
-      [
-        {
-          text: "💰 Balance",
-          callback_data: "balance"
-        },
-
-        {
-          text: "👥 Referrals",
-          callback_data: "refs"
-        }
-      ],
-
-      [
-        {
-          text: "🎁 Daily Bonus",
-          callback_data: "bonus"
-        },
-
-        {
-          text: "🏆 Top Users",
-          callback_data: "top"
-        }
-      ],
-
-      [
-        {
-          text: "📢 Join Channel",
-          url: "https://t.me/gangs234"
-        }
-      ]
-
-    ]
-
-  }
-
-});
-
-});
-
-/* ================= CALLBACKS ================= */
-
-bot.on(
-"callback_query",
-async (query) => {
-
-  const id =
-    String(query.message.chat.id);
-
-  const user =
-    await User.findOne({
-      userId: id
-    });
-
-  if (!user) return;
-
-  /* ===== CHECK JOIN ===== */
-
-  if (
-    query.data === "check_join"
-  ) {
-
-    const joined =
-      await checkJoin(id);
-
-    if (!joined) {
-
-      return bot.answerCallbackQuery(
-        query.id,
-        {
-          text: "❌ You still haven't joined",
-          show_alert: true
-        }
-      );
-
-    }
-
-    bot.answerCallbackQuery(
-      query.id,
-      {
-        text: "✅ Joined successfully"
-      }
-    );
-
-    return bot.sendMessage(
-      id,
-      "🚀 Send /start"
-    );
-
-  }
-
-  /* ===== BALANCE ===== */
-
-  if (
-    query.data === "balance"
-  ) {
-
-    return bot.sendMessage(
-      id,
-`💰 *YOUR BALANCE*
-
-🪙 ${user.balance} coins`,
+[
 {
-  parse_mode: "Markdown"
+text:"✅ Check Join",
+callback_data:"check_join"
+}
+]
+
+]
+}
+}
+
+);
+
+}
+
+// USER
+
+let user =
+await User.findOne({
+userId:id
 });
 
-  }
+if(!user){
 
-  /* ===== REFS ===== */
+user =
+await User.create({
 
-  if (
-    query.data === "refs"
-  ) {
+userId:id,
+username,
+firstName
 
-    return bot.sendMessage(
-      id,
-`👥 *YOUR REFERRALS*
+});
+
+}else{
+
+user.username = username;
+user.firstName = firstName;
+
+await user.save();
+
+}
+
+// ================= REF SYSTEM =================
+
+if(
+param &&
+param.startsWith("ref_")
+){
+
+const refUsername =
+"@" + param.replace("ref_","");
+
+if(
+refUsername !== username &&
+!user.referredBy
+){
+
+const refUser =
+await User.findOne({
+username:refUsername
+});
+
+if(refUser){
+
+user.referredBy =
+refUsername;
+
+refUser.refs += 1;
+
+refUser.balance += 1;
+
+await user.save();
+await refUser.save();
+
+bot.sendMessage(
+
+refUser.userId,
+
+`🎉 New Referral Joined
+
+💰 +1 USDT Added`
+
+);
+
+}
+
+}
+
+}
+
+// ================= MAIN UI =================
+
+bot.sendMessage(
+
+id,
+
+`🔥 *WELCOME TO META PRO*
+
+👤 ${firstName}
+🆔 ${username}
+
+💰 Balance:
+${user.balance.toFixed(2)} USDT
 
 👥 Referrals:
 ${user.refs}
 
-🔗 Link:
+Choose option below 👇`,
 
-${getRefLink(id)}`,
 {
-  parse_mode: "Markdown"
-});
+parse_mode:"Markdown",
 
-  }
+reply_markup:{
+inline_keyboard:[
 
-  /* ===== BONUS ===== */
+[
+{
+text:"🚀 Open App",
+web_app:{
+url:WEB_APP_URL
+}
+}
+],
 
-  if (
-    query.data === "bonus"
-  ) {
+[
+{
+text:"💰 Balance",
+callback_data:"balance"
+},
 
-    const now =
-      Date.now();
+{
+text:"👥 Referrals",
+callback_data:"refs"
+}
+],
 
-    if (
-      now - user.lastBonus <
-      86400000
-    ) {
+[
+{
+text:"💸 Withdraw",
+callback_data:"withdraw"
+}
+],
 
-      return bot.sendMessage(
-        id,
-        "⏳ Bonus already claimed today"
-      );
+[
+{
+text:"📢 Join Channel",
+url:"https://t.me/gangs234"
+}
+]
 
-    }
+]
+}
+}
 
-    user.balance += 50;
-
-    user.lastBonus = now;
-
-    await user.save();
-
-    return bot.sendMessage(
-      id,
-      "🎁 +50 bonus added"
-    );
-
-  }
-
-  /* ===== TOP ===== */
-
-  if (
-    query.data === "top"
-  ) {
-
-    const top =
-      await User.find()
-      .sort({
-        balance: -1
-      })
-      .limit(10);
-
-    let text =
-`🏆 *TOP USERS*
-
-`;
-
-    top.forEach((u, i) => {
-
-      text +=
-`${i + 1}. ${u.userId}
-💰 ${u.balance}
-
-`;
-
-    });
-
-    return bot.sendMessage(
-      id,
-      text,
-      {
-        parse_mode: "Markdown"
-      }
-    );
-
-  }
-
-  bot.answerCallbackQuery(
-    query.id
-  ).catch(() => {});
+);
 
 });
 
-/* ================= /BALANCE ================= */
+// ================= CALLBACKS =================
 
-bot.onText(
-/^\/balance$/,
-async (msg) => {
+bot.on(
+"callback_query",
 
-  const id =
-    String(msg.chat.id);
+async(query)=>{
 
-  let user =
-    await User.findOne({
-      userId: id
-    });
+const id =
+String(query.message.chat.id);
 
-  if (!user) {
+const user =
+await User.findOne({
+userId:id
+});
 
-    user =
-      await User.create({
-        userId: id
-      });
+if(!user) return;
 
-  }
+// CHECK JOIN
 
-  bot.sendMessage(
-    id,
+if(
+query.data === "check_join"
+){
+
+const joined =
+await checkJoin(id);
+
+if(!joined){
+
+return bot.answerCallbackQuery(
+query.id,
+{
+text:"❌ Join first",
+show_alert:true
+}
+);
+
+}
+
+bot.answerCallbackQuery(
+query.id,
+{
+text:"✅ Joined"
+}
+);
+
+return bot.sendMessage(
+id,
+"Send /start"
+);
+
+}
+
+// BALANCE
+
+if(
+query.data === "balance"
+){
+
+return bot.sendMessage(
+
+id,
+
 `💰 *YOUR BALANCE*
 
-🪙 ${user.balance} coins`,
+${user.balance.toFixed(2)} USDT`,
+
 {
-  parse_mode: "Markdown"
-});
+parse_mode:"Markdown"
+}
 
-});
+);
 
-/* ================= /REF ================= */
+}
 
-bot.onText(
-/^\/ref$/,
-async (msg) => {
+// REFS
 
-  const id =
-    String(msg.chat.id);
+if(
+query.data === "refs"
+){
 
-  let user =
-    await User.findOne({
-      userId: id
-    });
+const link =
+getRefLink(
+user.username
+);
 
-  if (!user) {
+return bot.sendMessage(
 
-    user =
-      await User.create({
-        userId: id
-      });
+id,
 
-  }
+`👥 *REFERRALS*
 
-  const link =
-    getRefLink(id);
-
-  bot.sendMessage(
-    id,
-`👥 *REFERRAL SYSTEM*
-
-👥 Total Referrals:
+👥 Total:
 ${user.refs}
 
-💰 Balance:
-${user.balance}
-
-🔗 Your Referral Link:
+🔗 Your Link:
 
 ${link}`,
+
 {
-  parse_mode: "Markdown"
-});
+parse_mode:"Markdown"
+}
+
+);
+
+}
+
+// WITHDRAW
+
+if(
+query.data === "withdraw"
+){
+
+if(user.balance < 5){
+
+return bot.sendMessage(
+
+id,
+
+"❌ Minimum withdraw is 5 USDT"
+
+);
+
+}
+
+return bot.sendMessage(
+
+id,
+
+"Choose withdraw method",
+
+{
+reply_markup:{
+inline_keyboard:[
+
+[
+{
+text:"💛 Binance",
+callback_data:"binance"
+}
+],
+
+[
+{
+text:"💎 TON",
+callback_data:"ton"
+}
+]
+
+]
+}
+}
+
+);
+
+}
+
+// BINANCE
+
+if(
+query.data === "binance"
+){
+
+user.walletType = "Binance";
+
+await user.save();
+
+return bot.sendMessage(
+
+id,
+
+"Send your Binance wallet address"
+
+);
+
+}
+
+// TON
+
+if(
+query.data === "ton"
+){
+
+user.walletType = "TON";
+
+await user.save();
+
+return bot.sendMessage(
+
+id,
+
+"Send your TON wallet address"
+
+);
+
+}
+
+bot.answerCallbackQuery(
+query.id
+);
 
 });
 
-/* ================= /REWARD ================= */
+// ================= WALLET RECEIVER =================
 
-bot.onText(
-/\/reward/,
-async (msg) => {
+bot.on(
+"message",
 
-  const id =
-    String(msg.chat.id);
+async(msg)=>{
 
-  const user =
-    await User.findOne({
-      userId: id
-    });
+if(!msg.text) return;
 
-  if (!user) return;
+if(
+msg.text.startsWith("/")
+) return;
 
-  const now =
-    Date.now();
+const id =
+String(msg.chat.id);
 
-  if (
-    now - user.lastReward <
-    30000
-  ) {
-
-    return bot.sendMessage(
-      id,
-      "⏳ Wait 30 seconds"
-    );
-
-  }
-
-  user.balance += 5;
-
-  user.lastReward = now;
-
-  await user.save();
-
-  bot.sendMessage(
-    id,
-    "💰 +5 coins added"
-  );
-
+const user =
+await User.findOne({
+userId:id
 });
 
-/* ================= /WITHDRAW ================= */
+if(
+!user ||
+!user.walletType
+) return;
 
-bot.onText(
-/\/withdraw (.+)/,
-async (msg, match) => {
+// SAVE ADDRESS
 
-  const id =
-    String(msg.chat.id);
+user.walletAddress =
+msg.text;
 
-  const amount =
-    Number(match[1]);
+await user.save();
 
-  const user =
-    await User.findOne({
-      userId: id
-    });
+// SEND TO ADMIN
 
-  if (!user) return;
+bot.sendMessage(
 
-  if (amount < 100) {
+ADMIN_ID,
 
-    return bot.sendMessage(
-      id,
-      "❌ Minimum withdraw is 100"
-    );
+`💸 *NEW WITHDRAW REQUEST*
 
-  }
-
-  if (
-    user.balance < amount
-  ) {
-
-    return bot.sendMessage(
-      id,
-      "❌ Not enough balance"
-    );
-
-  }
-
-  user.balance -= amount;
-
-  await user.save();
-
-  bot.sendMessage(
-    ADMIN_ID,
-`💸 *WITHDRAW REQUEST*
-
-👤 User:
-${id}
+👤 ${user.firstName}
+🆔 ${user.username}
 
 💰 Amount:
-${amount}`,
+${user.balance.toFixed(2)} USDT
+
+🏦 Method:
+${user.walletType}
+
+📬 Address:
+${user.walletAddress}`,
+
 {
-  parse_mode: "Markdown"
+parse_mode:"Markdown"
+}
+
+);
+
+// RESET
+
+user.walletType = "";
+
+user.balance = 0;
+
+await user.save();
+
+bot.sendMessage(
+
+id,
+
+"✅ Withdraw request sent"
+
+);
+
 });
 
-  bot.sendMessage(
-    id,
-    "✅ Withdraw request sent"
-  );
-
-});
-
-/* ================= /POST ================= */
+// ================= COMMANDS =================
 
 bot.onText(
-/\/post (.+)/,
-async (msg, match) => {
+/\/balance/,
 
-  if (
-    String(msg.chat.id) !== ADMIN_ID
-  ) return;
+async(msg)=>{
 
-  await postToAll(
-`📢 *UPDATE*
+const id =
+String(msg.chat.id);
 
-${match[1]}`
-  );
-
-  bot.sendMessage(
-    ADMIN_ID,
-    "✅ Posted"
-  );
-
+const user =
+await User.findOne({
+userId:id
 });
 
-/* ================= /POSTTOP ================= */
+if(!user) return;
+
+bot.sendMessage(
+
+id,
+
+`💰 Balance:
+${user.balance.toFixed(2)} USDT`
+
+);
+
+});
 
 bot.onText(
-/\/posttop/,
-async (msg) => {
+/\/ref/,
 
-  if (
-    String(msg.chat.id) !== ADMIN_ID
-  ) return;
+async(msg)=>{
 
-  const top =
-    await User.find()
-    .sort({
-      balance: -1
-    })
-    .limit(10);
+const id =
+String(msg.chat.id);
 
-  let text =
-`🏆 *TOP USERS*
+const user =
+await User.findOne({
+userId:id
+});
 
-`;
+if(!user) return;
 
-  top.forEach((u, i) => {
+const link =
+getRefLink(
+user.username
+);
 
-    text +=
-`${i + 1}. ${u.userId}
-💰 ${u.balance}
+bot.sendMessage(
 
-`;
+id,
 
-  });
+`👥 Referrals:
+${user.refs}
 
-  await postToAll(text);
+🔗 Link:
 
-  bot.sendMessage(
-    ADMIN_ID,
-    "✅ Leaderboard posted"
-  );
+${link}`
+
+);
 
 });
 
-/* ================= /MOTIVATE ================= */
+// ================= START SERVER =================
 
-bot.onText(
-/\/motivate/,
-async (msg) => {
+app.listen(PORT,()=>{
 
-  if (
-    String(msg.chat.id) !== ADMIN_ID
-  ) return;
-
-  await postToAll(
-`🚀 *KEEP GOING!*
-
-💰 Watch ads
-👥 Invite friends
-🏆 Reach leaderboard
-🎁 Earn rewards daily`
-  );
-
-  bot.sendMessage(
-    ADMIN_ID,
-    "✅ Motivation posted"
-  );
-
-});
-
-/* ================= /UPDATE ================= */
-
-bot.onText(
-/\/update/,
-async (msg) => {
-
-  if (
-    String(msg.chat.id) !== ADMIN_ID
-  ) return;
-
-  await postToAll(
-`📢 *IMPORTANT UPDATE*
-
-⚠️ The owner changed the system.
-
-💰 New ads-based earning system is now active.
-
-• Watch ads
-• Earn rewards
-• More updates coming soon
-
-🚀 Stay tuned`
-  );
-
-  bot.sendMessage(
-    ADMIN_ID,
-    "✅ Update posted"
-  );
-
-});
-
-/* ================= /VOTE ================= */
-
-bot.onText(
-/\/vote/,
-async (msg) => {
-
-  if (
-    String(msg.chat.id) !== ADMIN_ID
-  ) return;
-
-  const caption =
-`🎤 *VOTE FOR @raja_music0*
-
-🏆 OI Award voting is open`;
-
-  const keyboard = {
-
-    inline_keyboard: [
-      [
-        {
-          text: "🗳 Vote Now",
-          url: VOTE_LINK
-        }
-      ]
-    ]
-
-  };
-
-  try {
-
-    await bot.sendVideo(
-      CHANNEL,
-      VOTE_VIDEO_ID,
-      {
-        caption,
-        parse_mode: "Markdown",
-        reply_markup: keyboard
-      }
-    );
-
-    await bot.sendVideo(
-      GROUP_ID,
-      VOTE_VIDEO_ID,
-      {
-        caption,
-        parse_mode: "Markdown",
-        reply_markup: keyboard
-      }
-    );
-
-    bot.sendMessage(
-      ADMIN_ID,
-      "✅ Vote posted"
-    );
-
-  } catch (err) {
-
-    console.log(err);
-
-    bot.sendMessage(
-      ADMIN_ID,
-      "❌ Vote failed"
-    );
-
-  }
-
-});
-
-/* ================= ERRORS ================= */
-
-process.on(
-"uncaughtException",
-(err) => {
-
-  console.log(
-    "❌ ERROR:",
-    err
-  );
-
-});
-
-process.on(
-"unhandledRejection",
-(err) => {
-
-  console.log(
-    "❌ PROMISE ERROR:",
-    err
-  );
-
-});
-
-/* ================= START SERVER ================= */
-
-app.listen(PORT, () => {
-
-  console.log(
-    `🚀 Server running on ${PORT}`
-  );
+console.log(
+`🚀 Running on ${PORT}`
+);
 
 });
