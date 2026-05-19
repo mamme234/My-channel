@@ -1,18 +1,15 @@
 {
-  "name": "studybuddy-bot",
+  "name": "@Studybuddy_2025Bot",
   "version": "1.0.0",
-  "description": "Telegram referral bot",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "mongoose": "^8.3.2",
     "node-telegram-bot-api": "^0.66.0"
-  },
-  "engines": {
-    "node": "20.x"
   }
 }
