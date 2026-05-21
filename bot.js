@@ -415,7 +415,7 @@ bot.sendMessage(
 
 id,
 
-`🔥 *WELCOME TO META PRO*
+`🔥 *WELCOME TO ALPHA PRO*
 
 👤 ${firstName}
 🆔 ${username}
